@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suspension Fertigungsplanung</title>
+    <link rel="stylesheet" href="style.css?v=1790190734">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Login Screen Overlay -->
+    <div id="loginScreen" class="login-overlay">
+        <div class="login-box">
+            <div class="login-logo"><i class="fa-solid fa-lock"></i></div>
+            <h2>Zugriffskontrolle</h2>
+            <p>Bitte gib das Passwort ein, um die Planung zu bearbeiten.</p>
+            <input type="password" id="pwInput" placeholder="Passwort (z.B. suspension)" onkeypress="if(event.key==='Enter') login()">
+            <div class="login-actions">
+                <button class="add-btn" onclick="login()"><i class="fa-solid fa-unlock"></i> Bearbeiten</button>
+                <button class="save-btn" style="background:var(--bg-panel); color:var(--text-main); border:1px solid var(--border);" onclick="continueReadOnly()"><i class="fa-solid fa-eye"></i> Nur Ansehen</button>
+            </div>
+            <div id="loginError" class="login-error">Falsches Passwort!</div>
+        </div>
+    </div>
+
+    
+    <!-- Add Lieferant Modal -->
+    <div id="addLieferantModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Neuen Fertiger anlegen</h3>
+                <button class="close-btn" onclick="closeAddLieferantModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted)">Fertigungsverfahren (z.B. Fräsen, Laser):</label>
+                    <input type="text" id="newLieferantVerfahrenInput" list="verfahrenList" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg-main); color:var(--text-main);">
+                    <datalist id="verfahrenList"></datalist>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted)">Firma (Name):</label>
+                    <input type="text" id="newLieferantNameInput" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg-main); color:var(--text-main);">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted)">E-Mail (Optional):</label>
+                    <input type="text" id="newLieferantEmailInput" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted)">Webseite (Optional):</label>
+                    <input type="text" id="newLieferantWebInput" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="add-btn" onclick="saveAddLieferantModal()"><i class="fa-solid fa-plus"></i> Hinzufügen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Normteil Modal -->
+    <div id="addNormteilModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Neues Normteil anlegen</h3>
+                <button class="close-btn" onclick="closeAddNormteilModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted)">Kategorie (z.B. Schrauben, Muttern):</label>
+                    <input type="text" id="newNormteilKatInput" list="normteilKatList" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg-main); color:var(--text-main);">
+                    <datalist id="normteilKatList"></datalist>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted)">Normteil Name (z.B. M8x20 DIN 912):</label>
+                    <input type="text" id="newNormteilNameInput" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg-main); color:var(--text-main);">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="add-btn" onclick="saveAddNormteilModal()"><i class="fa-solid fa-plus"></i> Hinzufügen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Text Editor Modal -->
+    <div id="textModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="textModalTitle">Text bearbeiten</h3>
+                <button class="delete-btn" onclick="closeTextModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <textarea id="largeTextEditor" style="width:100%; height:300px; resize:vertical; padding:15px; font-family:inherit; background:var(--bg-main); color:var(--text-main); border:1px solid var(--border); border-radius:8px;"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="add-btn" onclick="saveTextModal()"><i class="fa-solid fa-check"></i> Üübernehmen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Column Modal -->
+    <div id="addColumnModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Neue Spalte anlegen</h3>
+                <button class="delete-btn" onclick="closeAddColumnModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="newColTableType">
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted)">Spaltenname:</label>
+                    <input type="text" id="newColNameInput" placeholder="z.B. Gewicht" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg-main); color:var(--text-main);">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted)">Datentyp (Format):</label>
+                    <select id="newColTypeSelect" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg-main); color:var(--text-main);">
+                        <option value="">Kurzer Text (Standard)</option>
+                        <option value="(Langtext)">Langer Text (Große Box)</option>
+                        <option value="(Datum)">Datum (Kalender)</option>
+                        <option value="(Zahl)">Zahl / Wert</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="add-btn" onclick="saveAddColumnModal()"><i class="fa-solid fa-plus"></i> Spalte hinzufügen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Bauteil Modal -->
+    <div id="addBauteilModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Neues Bauteil anlegen</h3>
+                <button class="close-btn" onclick="closeAddBauteilModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted)">Bauteil-Name:</label>
+                    <input type="text" id="newBauteilNameInput" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg-main); color:var(--text-main);">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted)">Baugruppe (z.B. Unsprung, Chassis):</label>
+                    <input type="text" id="newBauteilGroupInput" list="baugruppenList" oninput="updateSubGroupSuggestions()" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg-main); color:var(--text-main);">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted)">Unterbaugruppe (Optional)</label>
+                    <input type="text" id="newBauteilSubGroupInput" list="unterbaugruppenList" placeholder="z.B. Bremssattel Vorne" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="add-btn" onclick="saveAddBauteilModal()"><i class="fa-solid fa-plus"></i> Bauteil hinzufügen</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <header class="top-nav">
+            <div class="logo">
+                <i class="fa-solid fa-layer-group"></i>
+                <h2>SUSPENSION PLANUNG</h2>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('home')"><i class="fa-solid fa-house"></i> Dashboard</button>
+                <button class="tab-btn" onclick="switchTab('planung')"><i class="fa-solid fa-list-check"></i> Bauteile Planung</button>
+                <button class="tab-btn" onclick="switchTab('lieferanten')"><i class="fa-solid fa-industry"></i> Lieferanten Datenbank</button>
+                <button class="tab-btn" onclick="switchTab('normteile')"><i class="fa-solid fa-nut"></i> Normteile</button>
+                <button class="tab-btn" onclick="switchTab('gantt'); window.scrollTo({top: 0, behavior: 'smooth'});"><i class="fa-solid fa-chart-gantt"></i> Gantt Zeitplan</button>
+            </div>
+            <div class="actions">
+                <div class="target-date">
+                    <span class="label">Rolling Chassis Target:</span>
+                    <input type="date" id="targetDateInput" value="2026-12-01" class="date-input" onchange="updateTargetDate(this.value)">
+                    <span id="globalDaysLeftDisplay" style="margin-left: 10px; font-size: 0.9rem; font-weight:bold; color:var(--primary);"></span>
+                </div>
+                <button id="saveBtn" class="save-btn" onclick="saveData()"><i class="fa-solid fa-floppy-disk"></i> Speichern</button>
+                <button class="logout-btn" style="background: #ef4444; border-color: #ef4444; margin-left: 10px; color: white; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Abmelden</button>
+            </div>
+        </header>
+
+        <main class="content-area">
+            <!-- Home Dashboard Tab -->
+            <section id="home" class="tab-content active">
+                <div class="toolbar">
+                    <h3>Projekt ÜÜbersicht</h3>
+                </div>
+                <div class="dashboard-grid">
+                    <div class="widget">
+                        <h4><i class="fa-solid fa-chart-pie"></i> Gesamtfortschritt</h4>
+                        <div class="progress-container">
+                            <div class="progress-text"><span id="progressPercent">0</span>% Erledigt</div>
+                            <div class="progress-bar-bg">
+                                <div id="progressBar" class="progress-bar-fill"></div>
+                            </div>
+                            <div class="progress-details" id="progressDetails">0 von 0 Bauteilen</div>
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <h4><i class="fa-solid fa-clock"></i> Kritisch (Nächste 10 Tage & <50% Dauer)</h4>
+                        <div class="critical-number" id="criticalNumber" style="font-size:3rem; font-weight:800; color:var(--danger)">0</div>
+                        <div class="critical-text" style="color:var(--text-muted); font-size:0.85rem; margin-top:5px;">Next Deadlines & To-Dos</div>
+                    </div>
+                    <div class="widget">
+                        <h4><i class="fa-solid fa-list-check"></i> Status ÜÜbersicht</h4>
+                        <div class="status-list" id="statusList">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+                    <div class="widget">
+                        <h4><i class="fa-solid fa-boxes-stacked"></i> Normteile Übersicht</h4>
+                        <div class="status-list" style="margin-top: 10px; gap: 8px;">
+                            <div class="status-item" style="border-left: 4px solid var(--danger); background-color: var(--bg-main);">
+                                <span><i class="fa-solid fa-circle-exclamation" style="color:var(--danger); margin-right:5px;"></i> Muss bestellt werden</span>
+                                <strong id="ntToOrder">0</strong>
+                            </div>
+                            <div class="status-item" style="border-left: 4px solid var(--warning); background-color: var(--bg-main);">
+                                <span><i class="fa-solid fa-truck-fast" style="color:var(--warning); margin-right:5px;"></i> Bestellung unterwegs</span>
+                                <strong id="ntOrdered">0</strong>
+                            </div>
+                            <div class="status-item" style="border-left: 4px solid var(--success); background-color: var(--bg-main);">
+                                <span><i class="fa-solid fa-check-circle" style="color:var(--success); margin-right:5px;"></i> Auf Vorrat / Ready</span>
+                                <strong id="ntReady">0</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dashboard-details">
+                    <!-- Designing -->
+                    <div class="widget">
+                        <h4><i class="fa-solid fa-pen-ruler"></i> Next Things: Designing</h4>
+                        <div class="table-container small-table">
+                            <table>
+                                <thead>
+                                      <tr>
+                                          <th>Bauteil</th>
+                                          <th>Status</th>
+                                          <th>Fertig zur Kontrolle (CAD)</th>
+                                      </tr>
+                                  </thead>
+                                <tbody id="criticalDesignBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Building -->
+                    <div class="widget">
+                        <h4><i class="fa-solid fa-hammer"></i> Next Things: Building & Assemblying</h4>
+                        <div class="table-container small-table">
+                            <table style="font-size: 0.85rem;">
+                                  <thead>
+                                      <tr>
+                                          <th>Unterbaugruppe</th>
+                                          <th>Status</th>
+                                          <th>Restzeit</th>
+                                          <th>Dauer</th>
+                                          <th>Puffer</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody id="criticalBuildBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Montage ready -->
+                    <div class="widget">
+                        <h4><i class="fa-solid fa-check-double"></i> Zur Montage ready</h4>
+                        <div class="table-container small-table">
+                            <table style="font-size: 0.85rem;">
+                                  <thead>
+                                      <tr>
+                                          <th>Unterbaugruppe</th>
+                                          <th>Status</th>
+                                          <th>Restzeit</th>
+                                          <th>Dauer</th>
+                                          <th>Puffer</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody id="readyMontageBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Wartet auf Teile -->
+                    <div class="widget">
+                        <h4><i class="fa-solid fa-hourglass-half"></i> Wartet auf Teile</h4>
+                        <div class="table-container small-table">
+                            <table style="font-size: 0.85rem;">
+                                  <thead>
+                                      <tr>
+                                          <th>Unterbaugruppe</th>
+                                          <th>Fehlende Teile</th>
+                                          <th>Restzeit</th>
+                                          <th>Dauer</th>
+                                          <th>Puffer</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody id="waitingPartsBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            
+<!-- Gantt Summary Card on Dashboard -->
+                  <div class="gantt-summary-card" style="margin-top: 25px; background: var(--card-bg); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); border: 1px solid var(--border-color); width: 100%;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                          <div>
+                              <h3 style="margin: 0; font-size: 1.25rem; color: var(--text-color);"><i class="fa-solid fa-chart-gantt" style="color: #6366f1;"></i> Projekt-Zeitplan & Meilensteine (Gantt-Vorschau)</h3>
+                              <p style="margin: 4px 0 0; font-size: 0.85rem; color: #94a3b8;">Zeitlicher Ablauf der nächsten kritischen Bauteile vom Design bis zum Assembly</p>
+                          </div>
+                          <button class="add-btn" style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);" onclick="switchTab('gantt'); window.scrollTo({top: 0, behavior: 'smooth'});">
+                              <i class="fa-solid fa-up-right-from-square"></i> Vollständiges Gantt-Diagramm öffnen
+                          </button>
+                      </div>
+                      <div id="ganttSummaryContainer" style="overflow-x: auto; padding-bottom: 5px;">
+                          <!-- Injected via JS -->
+                      </div>
+                  </div>
+
+            </section>
+
+            
+<!-- Bauteile Planung Tab -->
+            <section id="planung" class="tab-content">
+                <div class="toolbar">
+                    <h3>Interaktives Planungs-Dashboard</h3>
+                    <div class="toolbar-actions">
+                        <input type="text" id="bauteileSearch" placeholder="Suchen..." onkeyup="filterBauteile()" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-main); margin-right: 15px;">
+                        <button class="add-btn add-col-btn" onclick="addBauteilColumn()"><i class="fa-solid fa-table-columns"></i> Spalte ergänzen</button>
+                        <button class="add-btn" onclick="addBauteilRow()"><i class="fa-solid fa-plus"></i> Neues Bauteil</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="bauteileTable">
+                        <thead id="bauteileHead">
+                            <!-- Injected via JS -->
+                        </thead>
+                        <tbody id="bauteileBody">
+                            <!-- Rows will be injected here via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Lieferanten Datenbank Tab -->
+            <section id="lieferanten" class="tab-content">
+                <div class="toolbar">
+                    <h3>Fertigungsverfahren, Historie und aktuelle Zuordnung</h3>
+                    <div class="toolbar-actions">
+                        <button class="add-btn add-col-btn" onclick="addLieferantColumn()"><i class="fa-solid fa-table-columns"></i> Spalte ergänzen</button>
+                        <button class="add-btn" onclick="addLieferantRow()"><i class="fa-solid fa-plus"></i> Neuer Lieferant</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="lieferantenTable">
+                        <thead id="lieferantenHead">
+                            <!-- Injected via JS -->
+                        </thead>
+                        <tbody id="lieferantenBody">
+                            <!-- Rows will be injected here via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Normteile Tab -->
+            <section id="normteile" class="tab-content">
+                <div class="toolbar">
+                    <h3>Normteile & Standardkomponenten</h3>
+                    <div class="toolbar-actions">
+                        <button class="add-btn add-col-btn" onclick="addNormteilColumn()"><i class="fa-solid fa-table-columns"></i> Spalte ergänzen</button>
+                        <button class="add-btn" onclick="addNormteilRow()"><i class="fa-solid fa-plus"></i> Neues Normteil</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="normteileTable">
+                        <thead id="normteileHead">
+                            <!-- Injected via JS -->
+                        </thead>
+                        <tbody id="normteileBody">
+                            <!-- Rows will be injected here via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            <!-- Gantt Zeitplan Tab -->
+              <section id="gantt" class="tab-content">
+                  <div class="toolbar" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                      <div>
+                          <h3 style="margin: 0; font-size: 1.4rem;"><i class="fa-solid fa-chart-gantt" style="color: #6366f1;"></i> Interaktiver Gantt-Zeitplan</h3>
+                          <p style="margin: 4px 0 0; font-size: 0.85rem; color: #94a3b8;">Kompletter Fertigungsablauf: Design (🟣), Kontrolle (🟡), Fertigung (🔵) und Assembly (🟢)</p>
+                      </div>
+                      <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                          <div style="display: flex; align-items: center; gap: 6px; background: #0f172a; padding: 6px 12px; border-radius: 8px; border: 1px solid #334155;">
+                              <span style="font-size: 0.8rem; color: #94a3b8;"><i class="fa-solid fa-filter"></i> Baugruppe:</span>
+                              <select id="ganttGroupFilter" onchange="renderGanttChart()" style="background: transparent; border: none; color: white; font-weight: 600; outline: none; cursor: pointer;">
+                                  <option value="ALL">Alle Baugruppen</option>
+                              </select>
+                          </div>
+                          <div style="display: flex; align-items: center; gap: 6px; background: #0f172a; padding: 6px 12px; border-radius: 8px; border: 1px solid #334155;">
+                              <span style="font-size: 0.8rem; color: #94a3b8;"><i class="fa-solid fa-calendar-days"></i> Ansicht:</span>
+                              <select id="ganttViewScale" onchange="renderGanttChart()" style="background: transparent; border: none; color: white; font-weight: 600; outline: none; cursor: pointer;">
+                                  <option value="weeks">Wochen (KW)</option>
+                                  <option value="months">Monate</option>
+                              </select>
+                          </div>
+                      </div>
+                  </div>
+                  <div class="gantt-legend" style="display: flex; gap: 18px; align-items: center; flex-wrap: wrap; margin-bottom: 15px; background: rgba(15, 23, 42, 0.6); padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
+                      <span style="font-weight: 600; color: #cbd5e1;"><i class="fa-solid fa-circle-info"></i> Phasen-Legende:</span>
+                      <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, #a855f7, #7c3aed); display: inline-block;"></span> <span>Design / CAD</span></div>
+                      <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, #f59e0b, #d97706); display: inline-block;"></span> <span>Kontrolle & Puffer</span></div>
+                      <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, #3b82f6, #2563eb); display: inline-block;"></span> <span>Fertigung / Lieferzeit</span></div>
+                      <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, #10b981, #059669); display: inline-block;"></span> <span>Assembly & Montage</span></div>
+                      <div style="display: flex; align-items: center; gap: 6px; margin-left: auto;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 8px #ef4444; display: inline-block;"></span> <span style="color: #fca5a5;">Kritisch (< 50% Puffer)</span></div>
+                  </div>
+                  <div id="ganttChartContainer" class="table-container" style="flex: 1; overflow: auto; min-height: 0; background: #1e293b; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                      <!-- Gantt Chart Table rendered via JS -->
+                  </div>
+              </section>
+        </main>
+    </div>
+
+    
+
+
+      <!-- Modal for Normteile -->
+    <div id="normteileModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Normteile verwalten</h3>
+                <button class="close-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-container small-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Kategorie</th>
+                                <th>Art (Normteil Name)</th>
+                                <th>Anzahl</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalNormteileBody">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <button class="add-btn modal-add-btn" onclick="addModalRow()"><i class="fa-solid fa-plus"></i> Normteil hinzufügen</button>
+            </div>
+            <div class="modal-footer">
+                <button class="save-btn" onclick="saveModal()"><i class="fa-solid fa-check"></i> Üübernehmen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">Erfolgreich gespeichert!</div>
+
+    <datalist id="baugruppenList">
+        <!-- Injected via JS -->
+    </datalist>
+    <datalist id="unterbaugruppenList">
+    </datalist>
+    <datalist id="normteileList">
+        <!-- Injected via JS -->
+    </datalist>
+
+    <script src="script.js?v=1790190734"></script>
+</body>
+</html>
