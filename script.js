@@ -868,18 +868,7 @@ renderLieferanten();
 // Dirty State Management
 let hasUnsavedChanges = false;
 
-window.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'hidden' && hasUnsavedChanges && sessionStorage.getItem('suspension_readonly') !== 'true') {
-        const headers = getAuthHeaders();
-        fetch('/api/save_bauteile', { method: 'POST', headers: headers, body: JSON.stringify({data: bauteileData, columns: bauteileColumns}), keepalive: true }).catch(()=>{});
-        fetch('/api/save_lieferanten', { method: 'POST', headers: headers, body: JSON.stringify({data: lieferantenData, columns: lieferantenColumns}), keepalive: true }).catch(()=>{});
-        fetch('/api/save_normteile', { method: 'POST', headers: headers, body: JSON.stringify({data: normteileData, columns: normteileColumns}), keepalive: true }).catch(()=>{});
-        hasUnsavedChanges = false;
-        
-        let saveBtn = document.getElementById('saveBtn');
-        if (saveBtn) saveBtn.style.backgroundColor = '';
-    }
-});
+
 
 function markDirty() {
     hasUnsavedChanges = true;

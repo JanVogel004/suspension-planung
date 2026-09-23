@@ -1,0 +1,38 @@
+Bauteil-Name,Baugruppe,Unterbaugruppe,Fertiger / Firma,Verantwortlich,Dringlichkeit,Status,Assembly Zeit,Montage Zeit,Fertigungsdauer,Kontrollzeit & Puffer,Notizen,Benötigte Normteile,Unterbaugruppen-Status
+Rocker Front,Feder Dämpfer,Rocker Front,,,Mittel,Nicht begonnen,2,1,90,7,,,Ausstehend
+Rocker Rear,Feder Dämpfer,Rocker Rear,,,Mittel,Nicht begonnen,2,1,90,7,,,Ausstehend
+Gearbox Housing,Unsprung,Getriebe,,,Mittel,Nicht begonnen,10,0,70,7,,,Ausstehend
+Cage,Unsprung,Cage,,,Mittel,Nicht begonnen,1,1,70,7,,,Ausstehend
+Rocker Front Hülsen Deckel,Feder Dämpfer,Rocker Front,,,Mittel,Nicht begonnen,2,1,60,7,,,Ausstehend
+Rocker Front Anschlag,Feder Dämpfer,Rocker Front,,,Mittel,Nicht begonnen,2,1,60,7,,,Ausstehend
+Feder Dämpfer Bestellen,Feder Dämpfer,,,,Mittel,Nicht begonnen,2,2,90,0,,,Ausstehend
+Laschen,Sonstiges,Keine,,,Mittel,Nicht begonnen,7,60,21,2,,,Ausstehend
+Rocker Rear Anschlag,Feder Dämpfer,Rocker Rear,,,Mittel,Nicht begonnen,2,1,60,7,,,Ausstehend
+Rocker Rear Hülsen Deckel,Feder Dämpfer,Rocker Rear,,,Mittel,Nicht begonnen,2,1,60,7,,,Ausstehend
+Rocker Rear Base,Feder Dämpfer,Rocker Rear,,,Mittel,Nicht begonnen,2,1,60,7,,,Ausstehend
+Rocker Front CFK Brasing,Feder Dämpfer,Rocker Front,Eigenfertigung,,Mittel,Nicht begonnen,2,1,60,0,,,Ausstehend
+Rodends Rear,Rods,Rods Front,,,Mittel,Nicht begonnen,10,2,60,7,,,Ausstehend
+Wishbones Front,Rods,Rods Front,,,Mittel,Nicht begonnen,10,2,60,7,,,Ausstehend
+Loadsensor bestellen,Rods,,,,Mittel,Nicht begonnen,10,2,60,7,,,Ausstehend
+ARB Rear,Feder Dämpfer,ARB,,,Mittel,Nicht begonnen,2,1,60,7,,,Ausstehend
+Bremssattel 3D Druck,Brake,Bremssattel,,,Mittel,Nicht begonnen,2,2,20,7,,[],Ausstehend
+Bremssattel Alu,Brake,Bremssattel,,,Mittel,Nicht begonnen,2,2,60,7,,,Ausstehend
+Quick Connect Bestellen,Steering,Keine,,,Mittel,Nicht begonnen,10,0,60,7,,,Ausstehend
+Upper Steering Coulum,Steering,Keine,,,Mittel,Nicht begonnen,10,0,60,7,,,Ausstehend
+Cardans,Steering,Keine,,,Mittel,Nicht begonnen,10,0,60,7,,,Ausstehend
+Upper Mounting 3D,Steering,Keine,,,Mittel,Nicht begonnen,10,0,60,7,,,Ausstehend
+Tubes,Steering,Keine,,,Mittel,Nicht begonnen,10,0,60,7,,,Ausstehend
+Tubes Adapter,Steering,Keine,,,Mittel,Nicht begonnen,10,0,60,7,,,Ausstehend
+Lenkgetriebe,Steering,Keine,,,Mittel,Nicht begonnen,10,0,60,7,,,Ausstehend
+Brackets Lenkgetriebe,Steering,Keine,,,Mittel,Nicht begonnen,10,0,60,7,,,Ausstehend
+(Driverless Parts),Steering,Keine,,,Mittel,Nicht begonnen,10,0,60,7,,,Ausstehend
+Lenkwinkelmounting,Steering,Keine,,,Mittel,Nicht begonnen,10,0,60,7,,,Ausstehend
+Lenkwinkelsensor,Steering,Keine,,,Mittel,Nicht begonnen,10,0,60,7,,,Ausstehend
+Wheelhub,Unsprung,Getriebe,,,Mittel,Nicht begonnen,10,0,70,7,,,Ausstehend
+Planet Carrier,Unsprung,Getriebe,,,Mittel,Nicht begonnen,10,0,70,7,,,Ausstehend
+Rims,Unsprung,Keine,Eigenfertigung,,Mittel,In Fertigung,10,0,60,7,,,Ausstehend
+Planetengetriebe,Unsprung,Getriebe,,,Mittel,Nicht begonnen,10,0,60,7,,,Ausstehend
+Upper Cage Attachment,Unsprung,Cage,,,Mittel,Nicht begonnen,1,1,60,7,,,Ausstehend
+Tie Rod,Rods,Rods Front,,,Mittel,Nicht begonnen,10,2,14,,,,Ausstehend
+Pushrod Front,Rods,Rods Front,,,Mittel,Nicht begonnen,10,2,14,,,,Ausstehend
+Pushrod Rear,Rods,Rods Rear,,,Mittel,Nicht begonnen,2,0,14,,,,Ausstehend
