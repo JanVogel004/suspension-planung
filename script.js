@@ -101,15 +101,15 @@ function switchTab(tabId) {
 // Fetch Data
 async function loadData() {
     try {
-        const bRes = await fetch(`${SUPABASE_URL}/bauteile?select=*`, { headers: getAuthHeaders() });
+        const bRes = await fetch(`${SUPABASE_URL}/bauteile?select=*&_t=+Date.now()`, { headers: getAuthHeaders(), cache: 'no-store' });
         bauteileData = await bRes.json();
         bauteileColumns = bauteileData.length > 0 ? Object.keys(bauteileData[0]).filter(k => k !== 'id') : ['Bauteil-Name', 'Baugruppe', 'Unterbaugruppe', 'Fertiger / Firma', 'Verantwortlich', 'Dringlichkeit', 'Status', 'Assembly Zeit', 'Montage Zeit', 'Fertigungsdauer', 'Kontrollzeit & Puffer', 'Notizen', 'Benötigte Normteile', 'Unterbaugruppen-Status'];
         
-        const lRes = await fetch(`${SUPABASE_URL}/lieferanten?select=*`, { headers: getAuthHeaders() });
+        const lRes = await fetch(`${SUPABASE_URL}/lieferanten?select=*&_t=+Date.now()`, { headers: getAuthHeaders(), cache: 'no-store' });
         lieferantenData = await lRes.json();
         lieferantenColumns = lieferantenData.length > 0 ? Object.keys(lieferantenData[0]).filter(k => k !== 'id') : ['Fertigungsverfahren', 'Firma (Fertiger)', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen'];
         
-        const nRes = await fetch(`${SUPABASE_URL}/normteile?select=*`, { headers: getAuthHeaders() });
+        const nRes = await fetch(`${SUPABASE_URL}/normteile?select=*&_t=+Date.now()`, { headers: getAuthHeaders(), cache: 'no-store' });
         normteileData = await nRes.json();
         normteileColumns = normteileData.length > 0 ? Object.keys(normteileData[0]).filter(k => k !== 'id') : ['Normteil Name', 'Kategorie', 'Beschreibung / Norm', 'Shop Link', 'Bestand', 'Geprüft am (Datum)', 'Bestellte Stückzahl (Zahl)', 'Bestellt am (Datum)', 'Angekommen (Check)'];
         
@@ -148,17 +148,17 @@ async function saveData() {
         return;
     }
         let cleanB = bauteileData.map(r => { let o={}; bauteileColumns.forEach(c => o[c]=r[c]||'');  return o; });
-        await fetch(`${SUPABASE_URL}/bauteile?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders() });
+        await fetch(`${SUPABASE_URL}/bauteile?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders(), cache: 'no-store' });
         let r1 = await fetch(`${SUPABASE_URL}/bauteile`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(cleanB) });
         if (!r1.ok) throw new Error("Fehler beim Speichern der Bauteile");
 
         let cleanL = lieferantenData.map(r => { let o={}; lieferantenColumns.forEach(c => o[c]=r[c]||'');  return o; });
-        await fetch(`${SUPABASE_URL}/lieferanten?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders() });
+        await fetch(`${SUPABASE_URL}/lieferanten?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders(), cache: 'no-store' });
         let r2 = await fetch(`${SUPABASE_URL}/lieferanten`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(cleanL) });
         if (!r2.ok) throw new Error("Fehler beim Speichern der Lieferanten");
 
         let cleanN = normteileData.map(r => { let o={}; normteileColumns.forEach(c => o[c]=r[c]||'');  return o; });
-        await fetch(`${SUPABASE_URL}/normteile?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders() });
+        await fetch(`${SUPABASE_URL}/normteile?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders(), cache: 'no-store' });
         let r3 = await fetch(`${SUPABASE_URL}/normteile`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(cleanN) });
         if (!r3.ok) throw new Error("Fehler beim Speichern der Normteile");
 
