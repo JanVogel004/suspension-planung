@@ -142,6 +142,11 @@ async function saveData() {
     saveBtn.style.backgroundColor = '';
 
     try {
+    if (bauteileData.length === 0) {
+        alert('Sicherheits-Stopp: Die Daten wurden nicht korrekt geladen. Speichern blockiert!');
+        saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Speichern';
+        return;
+    }
         let cleanB = bauteileData.map(r => { let o={}; bauteileColumns.forEach(c => o[c]=r[c]||'');  return o; });
         await fetch(`${SUPABASE_URL}/bauteile?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders() });
         let r1 = await fetch(`${SUPABASE_URL}/bauteile`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(cleanB) });
