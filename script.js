@@ -142,17 +142,17 @@ async function saveData() {
     saveBtn.style.backgroundColor = '';
 
     try {
-        let cleanB = bauteileData.map(r => { let o={}; bauteileColumns.forEach(c => o[c]=r[c]||''); if(r.id) o.id = r.id; return o; });
+        let cleanB = bauteileData.map(r => { let o={}; bauteileColumns.forEach(c => o[c]=r[c]||'');  return o; });
         await fetch(`${SUPABASE_URL}/bauteile?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders() });
         let r1 = await fetch(`${SUPABASE_URL}/bauteile`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(cleanB) });
         if (!r1.ok) throw new Error("Fehler beim Speichern der Bauteile");
 
-        let cleanL = lieferantenData.map(r => { let o={}; lieferantenColumns.forEach(c => o[c]=r[c]||''); if(r.id) o.id = r.id; return o; });
+        let cleanL = lieferantenData.map(r => { let o={}; lieferantenColumns.forEach(c => o[c]=r[c]||'');  return o; });
         await fetch(`${SUPABASE_URL}/lieferanten?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders() });
         let r2 = await fetch(`${SUPABASE_URL}/lieferanten`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(cleanL) });
         if (!r2.ok) throw new Error("Fehler beim Speichern der Lieferanten");
 
-        let cleanN = normteileData.map(r => { let o={}; normteileColumns.forEach(c => o[c]=r[c]||''); if(r.id) o.id = r.id; return o; });
+        let cleanN = normteileData.map(r => { let o={}; normteileColumns.forEach(c => o[c]=r[c]||'');  return o; });
         await fetch(`${SUPABASE_URL}/normteile?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders() });
         let r3 = await fetch(`${SUPABASE_URL}/normteile`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(cleanN) });
         if (!r3.ok) throw new Error("Fehler beim Speichern der Normteile");
