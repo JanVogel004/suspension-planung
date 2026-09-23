@@ -132,7 +132,6 @@ async function loadData() {
         renderLieferanten();
         renderNormteile();
         renderGanttChart();
-        updateGlobalDaysLeft();
         updateDashboard();
     } catch (error) {
         console.error("Fehler beim Laden der Daten:", error);
