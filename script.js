@@ -102,15 +102,21 @@ function switchTab(tabId) {
 async function loadData() {
     try {
         const bRes = await fetch(`${SUPABASE_URL}/bauteile?select=*`, { headers: getAuthHeaders(), cache: 'no-store' });
+        if (!bRes.ok) { const errText = await bRes.text(); throw new Error('Bauteile laden fehlgeschlagen: ' + bRes.status + ' ' + errText); }
         bauteileData = await bRes.json();
+        if (!Array.isArray(bauteileData)) throw new Error('Bauteile: Ungültige Antwort: ' + JSON.stringify(bauteileData));
         bauteileColumns = bauteileData.length > 0 ? Object.keys(bauteileData[0]).filter(k => k !== 'id') : ['Bauteil-Name', 'Baugruppe', 'Unterbaugruppe', 'Fertiger / Firma', 'Verantwortlich', 'Dringlichkeit', 'Status', 'Assembly Zeit', 'Montage Zeit', 'Fertigungsdauer', 'Kontrollzeit & Puffer', 'Notizen', 'Benötigte Normteile', 'Unterbaugruppen-Status'];
         
         const lRes = await fetch(`${SUPABASE_URL}/lieferanten?select=*`, { headers: getAuthHeaders(), cache: 'no-store' });
+        if (!lRes.ok) { const errText = await lRes.text(); throw new Error('Lieferanten laden fehlgeschlagen: ' + lRes.status + ' ' + errText); }
         lieferantenData = await lRes.json();
+        if (!Array.isArray(lieferantenData)) throw new Error('Lieferanten: Ungültige Antwort');
         lieferantenColumns = lieferantenData.length > 0 ? Object.keys(lieferantenData[0]).filter(k => k !== 'id') : ['Fertigungsverfahren', 'Firma (Fertiger)', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen'];
         
         const nRes = await fetch(`${SUPABASE_URL}/normteile?select=*`, { headers: getAuthHeaders(), cache: 'no-store' });
+        if (!nRes.ok) { const errText = await nRes.text(); throw new Error('Normteile laden fehlgeschlagen: ' + nRes.status + ' ' + errText); }
         normteileData = await nRes.json();
+        if (!Array.isArray(normteileData)) throw new Error('Normteile: Ungültige Antwort');
         normteileColumns = normteileData.length > 0 ? Object.keys(normteileData[0]).filter(k => k !== 'id') : ['Normteil Name', 'Kategorie', 'Beschreibung / Norm', 'Shop Link', 'Bestand', 'Geprüft am (Datum)', 'Bestellte Stückzahl (Zahl)', 'Bestellt am (Datum)', 'Angekommen (Check)'];
         
         if(!bauteileColumns.includes('Unterbaugruppe')) {
@@ -130,6 +136,7 @@ async function loadData() {
         updateDashboard();
     } catch (error) {
         console.error("Fehler beim Laden der Daten:", error);
+        alert("LADEFEHLER: " + error.message);
     }
 }
 
