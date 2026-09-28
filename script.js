@@ -427,6 +427,7 @@ function renderLieferanten() {
     // Head
     let headHtml = '<tr>';
     lieferantenColumns.forEach(col => {
+        if (col === 'Typ') return;
         let sStyle = col === 'Teile / Komponenten (ct8)' ? ' style="min-width: 250px;"' : '';
         headHtml += `<th${sStyle}>
             ${displayCol(col)}
@@ -470,7 +471,8 @@ function renderLieferanten() {
         let typ = row['Typ'] || '';
         if (typ !== currentTyp) {
             currentTyp = typ;
-            const colCount = lieferantenColumns.length + 2; // +2 for computed col + delete
+            const hiddenColsCount = lieferantenColumns.includes('Typ') ? 1 : 0;
+            const colCount = lieferantenColumns.length - hiddenColsCount + 2; // +2 for computed col + delete
             const headerTr = document.createElement('tr');
             headerTr.className = 'group-header';
             const color = typColors[typ] || '#475569';
@@ -481,6 +483,7 @@ function renderLieferanten() {
         const tr = document.createElement('tr');
         let html = '';
         lieferantenColumns.forEach(col => {
+            if (col === 'Typ') return;
             let val = row[col] || '';
             if (col === 'Zusammenarbeit') {
                 const optionen = ['', 'Zufrieden', 'Können mehr machen', 'Wollen weniger machen'];
