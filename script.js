@@ -498,7 +498,16 @@ function renderLieferanten() {
                 let opts = optionen.map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${ampel[o]} ${o}</option>`).join('');
                 html += `<td style="text-align:center;"><select style="background:${farbe}22; color:${farbe}; border:1.5px solid ${farbe}; border-radius:6px; padding:4px 8px; font-weight:600; cursor:pointer;" onchange="updateL(${index}, '${col}', this.value); renderLieferanten();">${opts}</select></td>`;
             } else if (col === 'Firma (Fertiger)') {
-                html += `<td><input type="text" value="${val}" onchange="updateL(${index}, '${col}', this.value); renderBauteile(); renderLieferanten();"></td>`;
+                let typ = row['Typ'] || '';
+                let typOpts = ['Sponsoren', 'Zulieferer', 'Mögliche Sponsoren', ''].map(t => `<option value="${t}" ${typ === t ? 'selected' : ''}>${t === '' ? '📋 Sonstige' : (t === 'Sponsoren' ? '⭐ Sponsoren' : (t === 'Zulieferer' ? '🔧 Zulieferer' : '💡 Mögliche Sponsoren'))}</option>`).join('');
+                html += `<td>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <input type="text" value="${val}" onchange="updateL(${index}, '${col}', this.value); renderBauteile(); renderLieferanten();" style="font-weight:bold;">
+                        <select style="font-size:0.7rem; padding:3px; border-radius:4px; border:1px solid var(--border); background:var(--bg-dark); color:var(--text-muted); cursor:pointer;" onchange="updateL(${index}, 'Typ', this.value); renderLieferanten();" title="Kategorie ändern">
+                            ${typOpts}
+                        </select>
+                    </div>
+                </td>`;
             } else if (col.toLowerCase().includes('(check)')) {
                 let isChecked = val === 'true' || val === true || val === 'Ja' || val === '1';
                 html += `<td style="text-align:center;"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="updateL(${index}, '${col}', this.checked ? 'true' : 'false'); renderLieferanten();" style="width:20px; height:20px; cursor:pointer;"></td>`;
@@ -873,6 +882,7 @@ window.openAddLieferantModal = function() {
     document.getElementById('newLieferantNameInput').value = '';
     document.getElementById('newLieferantEmailInput').value = '';
     document.getElementById('newLieferantWebInput').value = '';
+    if (document.getElementById('newLieferantTypInput')) document.getElementById('newLieferantTypInput').value = 'Sponsoren';
     updateVerfahrenSuggestions();
 };
 
@@ -888,6 +898,7 @@ window.saveAddLieferantModal = function() {
         let name = document.getElementById('newLieferantNameInput').value.trim();
         let email = document.getElementById('newLieferantEmailInput').value.trim();
         let web = document.getElementById('newLieferantWebInput').value.trim();
+        let typ = document.getElementById('newLieferantTypInput') ? document.getElementById('newLieferantTypInput').value : '';
         
         if (!name) { alert("Bitte einen Firmennamen eingeben!"); return; }
         
@@ -896,6 +907,7 @@ window.saveAddLieferantModal = function() {
         lieferantenColumns.forEach(c => newRow[c] = "");
         newRow["Fertigungsverfahren"] = verfahren;
         newRow["Firma (Fertiger)"] = name;
+        newRow["Typ"] = typ;
         newRow["Email"] = email;
         newRow["Webseite"] = web;
         
