@@ -448,10 +448,10 @@ function renderLieferanten() {
                 const farben = {
                     '': '#475569',
                     'Zufrieden': '#16a34a',
-                    'Können mehr machen': '#ca8a04',
+                    'Können mehr machen': '#4ade80',
                     'Wollen weniger machen': '#dc2626'
                 };
-                const ampel = { '': '⚪', 'Zufrieden': '🟢', 'Können mehr machen': '🟡', 'Wollen weniger machen': '🔴' };
+                const ampel = { '': '⚪', 'Zufrieden': '🟢', 'Können mehr machen': '🟩', 'Wollen weniger machen': '🔴' };
                 let farbe = farben[val] || farben[''];
                 let opts = optionen.map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${ampel[o]} ${o}</option>`).join('');
                 html += `<td style="text-align:center;"><select style="background:${farbe}22; color:${farbe}; border:1.5px solid ${farbe}; border-radius:6px; padding:4px 8px; font-weight:600; cursor:pointer;" onchange="updateL(${index}, '${col}', this.value); renderLieferanten();">${opts}</select></td>`;

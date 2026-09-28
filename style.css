@@ -658,7 +658,12 @@ button.delete-btn:hover {
 .calculated-list {
     color: var(--accent);
     font-weight: 500;
-    line-height: 1.5;
+    line-height: 1.6;
+    white-space: normal;
+    word-break: break-word;
+    min-width: 180px;
+    max-width: 320px;
+    font-size: 0.82rem;
 }
 
 /* Toast */
