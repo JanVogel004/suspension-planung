@@ -401,6 +401,11 @@ function renderBauteile() {
         tr.innerHTML = html;
         tbody.appendChild(tr);
     });
+    // Re-apply active search filter after every re-render
+    let searchInput = document.getElementById('bauteileSearch');
+    if (searchInput && searchInput.value.trim() !== '') {
+        filterBauteile();
+    }
 }
 
 function isStandardLCol(col) {
