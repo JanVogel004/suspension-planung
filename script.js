@@ -414,7 +414,7 @@ function renderBauteile() {
 }
 
 function isStandardLCol(col) {
-    return ['Fertigungsverfahren', 'Firma (Fertiger)', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen', 'Zusammenarbeit'].includes(col);
+    return ['Fertigungsverfahren', 'Firma (Fertiger)', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen', 'Zusammenarbeit', 'Typ'].includes(col);
 }
 
 function renderLieferanten() {
@@ -436,9 +436,35 @@ function renderLieferanten() {
     headHtml += `<th></th></tr>`;
     thead.innerHTML = headHtml;
 
-    // Body
+    // Body - group by Typ
     tbody.innerHTML = '';
-    lieferantenData.forEach((row, index) => {
+    const typOrder = ['Sponsoren', 'Zulieferer', ''];
+    const typLabels = { 'Sponsoren': '⭐ Sponsoren', 'Zulieferer': '🔧 Zulieferer (nicht gesponsort)', '': '📋 Sonstige' };
+    const typColors = { 'Sponsoren': '#6366f1', 'Zulieferer': '#0ea5e9', '': '#475569' };
+
+    // Sort by Typ order then by name
+    let sorted = [...lieferantenData].map((row, index) => ({row, index})).sort((a, b) => {
+        let tA = a.row['Typ'] || '';
+        let tB = b.row['Typ'] || '';
+        let oA = typOrder.indexOf(tA); if (oA === -1) oA = 99;
+        let oB = typOrder.indexOf(tB); if (oB === -1) oB = 99;
+        if (oA !== oB) return oA - oB;
+        return (a.row['Firma (Fertiger)'] || '').localeCompare(b.row['Firma (Fertiger)'] || '');
+    });
+
+    let currentTyp = '__NONE__';
+    sorted.forEach(({row, index}) => {
+        let typ = row['Typ'] || '';
+        if (typ !== currentTyp) {
+            currentTyp = typ;
+            const colCount = lieferantenColumns.length + 2; // +2 for computed col + delete
+            const headerTr = document.createElement('tr');
+            headerTr.className = 'group-header';
+            const color = typColors[typ] || '#475569';
+            const label = typLabels[typ] || typ;
+            headerTr.innerHTML = `<td colspan="${colCount}"><div class="sticky-group-header" style="color:${color}; border-left:3px solid ${color}; padding-left:12px;">${label}</div></td>`;
+            tbody.appendChild(headerTr);
+        }
         const tr = document.createElement('tr');
         let html = '';
         lieferantenColumns.forEach(col => {
