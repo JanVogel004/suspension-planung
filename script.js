@@ -414,7 +414,7 @@ function renderBauteile() {
 }
 
 function isStandardLCol(col) {
-    return ['Fertigungsverfahren', 'Firma (Fertiger)', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen'].includes(col);
+    return ['Fertigungsverfahren', 'Firma (Fertiger)', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen', 'Zusammenarbeit'].includes(col);
 }
 
 function renderLieferanten() {
@@ -443,9 +443,21 @@ function renderLieferanten() {
         let html = '';
         lieferantenColumns.forEach(col => {
             let val = row[col] || '';
-            if (col === 'Firma (Fertiger)') {
+            if (col === 'Zusammenarbeit') {
+                const optionen = ['', 'Zufrieden', 'Können mehr machen', 'Wollen weniger machen'];
+                const farben = {
+                    '': '#475569',
+                    'Zufrieden': '#16a34a',
+                    'Können mehr machen': '#ca8a04',
+                    'Wollen weniger machen': '#dc2626'
+                };
+                const ampel = { '': '⚪', 'Zufrieden': '🟢', 'Können mehr machen': '🟡', 'Wollen weniger machen': '🔴' };
+                let farbe = farben[val] || farben[''];
+                let opts = optionen.map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${ampel[o]} ${o}</option>`).join('');
+                html += `<td style="text-align:center;"><select style="background:${farbe}22; color:${farbe}; border:1.5px solid ${farbe}; border-radius:6px; padding:4px 8px; font-weight:600; cursor:pointer;" onchange="updateL(${index}, '${col}', this.value); renderLieferanten();">${opts}</select></td>`;
+            } else if (col === 'Firma (Fertiger)') {
                 html += `<td><input type="text" value="${val}" onchange="updateL(${index}, '${col}', this.value); renderBauteile(); renderLieferanten();"></td>`;
-                        } else if (col.toLowerCase().includes('(check)')) {
+            } else if (col.toLowerCase().includes('(check)')) {
                 let isChecked = val === 'true' || val === true || val === 'Ja' || val === '1';
                 html += `<td style="text-align:center;"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="updateL(${index}, '${col}', this.checked ? 'true' : 'false'); renderLieferanten();" style="width:20px; height:20px; cursor:pointer;"></td>`;
             } else {
