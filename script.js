@@ -111,7 +111,9 @@ async function loadData() {
         if (!lRes.ok) { const errText = await lRes.text(); throw new Error('Lieferanten laden fehlgeschlagen: ' + lRes.status + ' ' + errText); }
         lieferantenData = await lRes.json();
         if (!Array.isArray(lieferantenData)) throw new Error('Lieferanten: Ungültige Antwort');
-        lieferantenColumns = lieferantenData.length > 0 ? Object.keys(lieferantenData[0]).filter(k => k !== 'id') : ['Fertigungsverfahren', 'Firma (Fertiger)', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen'];
+        let lColsRaw = lieferantenData.length > 0 ? Object.keys(lieferantenData[0]).filter(k => k !== 'id') : ['Fertigungsverfahren', 'Firma (Fertiger)', 'Zusammenarbeit', 'Typ', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen'];
+        let lPref = ['Fertigungsverfahren', 'Firma (Fertiger)', 'Zusammenarbeit', 'Typ', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen'];
+        lieferantenColumns = [...new Set([...lPref.filter(c => lColsRaw.includes(c)), ...lColsRaw])];
         
         const nRes = await fetch(`${SUPABASE_URL}/normteile?select=*`, { headers: getAuthHeaders(), cache: 'no-store' });
         if (!nRes.ok) { const errText = await nRes.text(); throw new Error('Normteile laden fehlgeschlagen: ' + nRes.status + ' ' + errText); }
@@ -353,6 +355,7 @@ function renderBauteile() {
                     <option value="Designing" ${val==='Designing'?'selected':''}>Designing</option>
                     <option value="Fertigungszeichnung" ${val==='Fertigungszeichnung'?'selected':''}>Fertigungszeichnung</option>
                     <option value="Kontrolle" ${val==='Kontrolle'?'selected':''}>Kontrolle</option>
+                    <option value="Zu bestellen" ${val==='Zu bestellen'?'selected':''}>Zu bestellen</option>
                     <option value="In Fertigung" ${val==='In Fertigung'?'selected':''}>In Fertigung</option>
                     <option value="In Lieferung" ${val==='In Lieferung'?'selected':''}>In Lieferung</option>
                     <option value="Im Lager" ${val==='Im Lager'?'selected':''}>Im Lager</option>
