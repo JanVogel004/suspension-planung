@@ -519,12 +519,13 @@ function renderLieferanten() {
                 if (lowerCol.includes('(datum)') || lowerCol.includes('date')) type = 'date';
                 else if (lowerCol.includes('(zahl)') || lowerCol === 'bestand') type = 'number';
                 
-                if (lowerCol.includes('(langtext)') || lowerCol.includes('notiz') || lowerCol.includes('beschreibung') || lowerCol.includes('text') || lowerCol.includes('info') || lowerCol.includes('link')) {
+                if (lowerCol.includes('(langtext)') || lowerCol.includes('notiz') || lowerCol.includes('beschreibung') || lowerCol.includes('text') || lowerCol.includes('info') || lowerCol.includes('link') || col === 'Teile / Komponenten (ct8)') {
                     isTextarea = true;
                 }
 
                 if (isTextarea) {
-                    html += `<td><textarea rows="1" onchange="updateL(${index}, '${col}', this.value)" ondblclick="openTextModal('lieferanten', ${index}, '${col}')">${val}</textarea></td>`;
+                    let r = col === 'Teile / Komponenten (ct8)' ? '2' : '1';
+                    html += `<td><textarea rows="${r}" style="white-space: pre-wrap;" onchange="updateL(${index}, '${col}', this.value)" ondblclick="openTextModal('lieferanten', ${index}, '${col}')">${val}</textarea></td>`;
                 } else {
                     let sClass = col === "Firma (Fertiger)" ? ' class="sticky-col-main"' : "";
                     html += `<td${sClass}><input type="${type}" value="${val}" onchange="updateL(${index}, '${col}', this.value)" ondblclick="if(this.type==='text') openTextModal('lieferanten', ${index}, '${col}')"></td>`;
