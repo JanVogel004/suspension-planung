@@ -438,9 +438,19 @@ function renderLieferanten() {
 
     // Body - group by Typ
     tbody.innerHTML = '';
-    const typOrder = ['Sponsoren', 'Zulieferer', ''];
-    const typLabels = { 'Sponsoren': '⭐ Sponsoren', 'Zulieferer': '🔧 Zulieferer (nicht gesponsort)', '': '📋 Sonstige' };
-    const typColors = { 'Sponsoren': '#6366f1', 'Zulieferer': '#0ea5e9', '': '#475569' };
+    const typOrder = ['Sponsoren', 'Zulieferer', 'Mögliche Sponsoren', ''];
+    const typLabels = {
+        'Sponsoren': '⭐ Sponsoren',
+        'Zulieferer': '🔧 Zulieferer (nicht gesponsort)',
+        'Mögliche Sponsoren': '💡 Mögliche Sponsoren',
+        '': '📋 Sonstige'
+    };
+    const typColors = {
+        'Sponsoren': '#6366f1',
+        'Zulieferer': '#0ea5e9',
+        'Mögliche Sponsoren': '#f59e0b',
+        '': '#475569'
+    };
 
     // Sort by Typ order then by name
     let sorted = [...lieferantenData].map((row, index) => ({row, index})).sort((a, b) => {
