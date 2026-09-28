@@ -208,6 +208,11 @@ function calculateDates(row) {
     return { lieferdatum: dLiefer, abschickdatum: dAbschick, kontrolle: dKontrolle };
 }
 
+// Strip type suffixes from column names for display
+function displayCol(col) {
+    return col.replace(/\s*\((langtext|datum|zahl|check)\)\s*/gi, '').trim();
+}
+
 // Rendering
 function renderBauteile() {
     const thead = document.getElementById('bauteileHead');
@@ -219,7 +224,7 @@ function renderBauteile() {
         if (col === 'Assembly Zeit' || col === 'Montage Zeit' || col === 'Unterbaugruppen-Status') return;
         let sClass = col === 'Bauteil-Name' ? ' class="sticky-col-main"' : '';
         headHtml += `<th${sClass}>
-            ${col}
+            ${displayCol(col)}
             ${!isStandardBCol(col) ? ` <button class="delete-btn" style="padding:2px; font-size:10px" onclick="delBauteilColumn('${col}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
         </th>`;
         if (col === 'Kontrollzeit & Puffer') {
@@ -421,7 +426,7 @@ function renderLieferanten() {
     lieferantenColumns.forEach(col => {
         let sStyle = col === 'Teile / Komponenten (ct8)' ? ' style="min-width: 250px;"' : '';
         headHtml += `<th${sStyle}>
-            ${col}
+            ${displayCol(col)}
             ${!isStandardLCol(col) ? ` <button class="delete-btn" style="padding:2px; font-size:10px" onclick="delLieferantColumn('${col}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
         </th>`;
         if (col === 'Teile / Komponenten (ct8)') {
@@ -997,7 +1002,7 @@ function renderNormteile() {
             headHtml += `<th>Benötigt für (Gesamtanzahl)</th>`;
         }
         headHtml += `<th${sClass}>
-            ${col}
+            ${displayCol(col)}
             ${!isStandardNCol(col) ? ` <button class="delete-btn" style="padding:2px; font-size:10px" onclick="delNormteilColumn('${col}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
         </th>`;
     });
