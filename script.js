@@ -1812,9 +1812,28 @@ window.renderGanttSummary = function() {
         let wFert = Math.max(2, endFert - endCAD);
         let wAss = Math.max(2, endAss - endFert);
 
+        let status = p["Status"] || 'Ausstehend';
         let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-        let opacityStyle = p["Status"] === 'Fertig montiert' ? ' opacity: 0.4;' : '';
-        html += `<tr style="${opacityStyle}">
+        
+        let trStyle = '';
+        let isBehind = false;
+        let todayNoTime = new Date();
+        todayNoTime.setHours(0,0,0,0);
+        
+        if (['Nicht begonnen', 'Designing', 'Fertigungszeichnung'].includes(status) && todayNoTime > dK) isBehind = true;
+        else if (['Kontrolle', 'Zu bestellen'].includes(status) && todayNoTime > dA) isBehind = true;
+        else if (['In Fertigung', 'In Lieferung'].includes(status) && todayNoTime > dL) isBehind = true;
+        else if (['Im Lager', 'Assembled'].includes(status) && todayNoTime > target) isBehind = true;
+
+        if (status === 'Fertig montiert') {
+            trStyle = 'opacity: 0.4;';
+        } else if (isBehind) {
+            trStyle = 'background-color: rgba(239, 68, 68, 0.15);';
+        } else if (['In Fertigung', 'In Lieferung'].includes(status)) {
+            trStyle = 'opacity: 0.6; background-color: rgba(59, 130, 246, 0.15);';
+        }
+
+        html += `<tr style="${trStyle}">
             <td class="gantt-left-col" style="width: 240px; min-width: 240px; max-width: 240px;">
                 <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;">${bg}</div>
                 <a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="font-weight: 700; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; border-bottom: 1px dashed currentcolor; display: block;" title="${name}">${name}</a>
@@ -1974,8 +1993,26 @@ window.renderGanttChart = function() {
             let tooltipText = `${name} (${g} / ${ub})&#10;----------------------------&#10;🟣 Design/CAD: bis ${dK.toLocaleDateString('de-DE')}&#10;🟡 Kontrolle/Puffer: ${p["Kontrollzeit & Puffer"]||0} Tage (bis ${dA.toLocaleDateString('de-DE')})&#10;🔵 Fertigung: ${p["Fertigungsdauer"]||0} Tage (bis ${dL.toLocaleDateString('de-DE')})&#10;🟢 Assembly/Montage: ${parseInt(p["Assembly Zeit"]||0)+parseInt(p["Montage Zeit"]||0)} Tage (bis ${target.toLocaleDateString('de-DE')})`;
 
             let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-            let opacityStyle = status === 'Fertig montiert' ? ' opacity: 0.4;' : '';
-            html += `<tr style="${opacityStyle}">
+            
+            let trStyle = '';
+            let isBehind = false;
+            let todayNoTime = new Date();
+            todayNoTime.setHours(0,0,0,0);
+            
+            if (['Nicht begonnen', 'Designing', 'Fertigungszeichnung'].includes(status) && todayNoTime > dK) isBehind = true;
+            else if (['Kontrolle', 'Zu bestellen'].includes(status) && todayNoTime > dA) isBehind = true;
+            else if (['In Fertigung', 'In Lieferung'].includes(status) && todayNoTime > dL) isBehind = true;
+            else if (['Im Lager', 'Assembled'].includes(status) && todayNoTime > target) isBehind = true;
+
+            if (status === 'Fertig montiert') {
+                trStyle = 'opacity: 0.4;';
+            } else if (isBehind) {
+                trStyle = 'background-color: rgba(239, 68, 68, 0.15);';
+            } else if (['In Fertigung', 'In Lieferung'].includes(status)) {
+                trStyle = 'opacity: 0.6; background-color: rgba(59, 130, 246, 0.15);';
+            }
+
+            html += `<tr style="${trStyle}">
                 <td class="gantt-left-col" style="padding: 8px 14px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="font-weight: 700; color: var(--text-color); font-size: 0.85rem; text-decoration: none; border-bottom: 1px dashed currentcolor;" title="Zur Planung springen">${name}</a>
