@@ -1917,10 +1917,23 @@ window.renderGanttChart = function() {
     let day = minDate.getDay() || 7;
     if (day !== 1) minDate.setHours(-24 * (day - 1));
 
+    let dfDate = dfDateGlobal;
+    
+    // Ensure dfDate is within timeline bounds
+    if (dfDate < minDate) {
+        minDate = new Date(dfDate);
+        minDate.setDate(minDate.getDate() - 7);
+        let day = minDate.getDay() || 7;
+        if (day !== 1) minDate.setHours(-24 * (day - 1));
+    }
+    if (dfDate > maxDate) {
+        maxDate = new Date(dfDate);
+        maxDate.setDate(maxDate.getDate() + 7);
+    }
+    
     let totalMs = maxDate - minDate;
     if (totalMs <= 0) totalMs = 1;
 
-    let dfDate = dfDateGlobal;
     let dfPct = ((dfDate - minDate) / totalMs) * 100;
 
     // Generate columns
