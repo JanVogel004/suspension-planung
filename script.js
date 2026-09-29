@@ -1810,10 +1810,11 @@ window.renderGanttSummary = function() {
         let wFert = Math.max(2, endFert - endCAD);
         let wAss = Math.max(2, endAss - endFert);
 
+        let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
         html += `<tr>
             <td class="gantt-left-col" style="width: 240px; min-width: 240px; max-width: 240px;">
                 <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;">${bg}</div>
-                <div style="font-weight: 700; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${name}">${name}</div>
+                <a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="font-weight: 700; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; border-bottom: 1px dashed currentcolor; display: block;" title="${name}">${name}</a>
             </td>
             <td class="gantt-time-cell" style="padding: 6px 12px !important;">
                 <div style="position: relative; width: 100%; height: 26px; background: rgba(0,0,0,0.25); border-radius: 6px; overflow: hidden; display: flex; border: 1px solid rgba(255,255,255,0.05);">
