@@ -1514,30 +1514,66 @@ window.filterNormteile = function() {
         currentGroupHeader.style.display = (filter === '' || anyVisibleInGroup) ? "" : "none";
     }
 };
-function filterBauteile() {
+window.filterBauteile = function() {
     let input = document.getElementById("bauteileSearch");
+    if (!input) return;
     let filter = input.value.toLowerCase();
     let tbody = document.getElementById("bauteileBody");
     if (!tbody) return;
+    
     let trs = tbody.getElementsByTagName("tr");
     
+    let currentGroupHeader = null;
+    let currentSubGroupHeader = null;
+    let anyVisibleInGroup = false;
+    let anyVisibleInSubGroup = false;
+
     for (let i = 0; i < trs.length; i++) {
-        let inputs = trs[i].getElementsByTagName("input");
-        let selects = trs[i].getElementsByTagName("select");
-        let textareas = trs[i].getElementsByTagName("textarea");
-        let text = "";
+        let tr = trs[i];
         
-        for (let j=0; j<inputs.length; j++) text += inputs[j].value.toLowerCase() + " ";
-        for (let j=0; j<selects.length; j++) text += selects[j].value.toLowerCase() + " ";
-        for (let j=0; j<textareas.length; j++) text += textareas[j].value.toLowerCase() + " ";
-        
-        if (text.indexOf(filter) > -1) {
-            trs[i].style.display = "";
+        if (tr.classList.contains('group-header')) {
+            if (currentSubGroupHeader) {
+                currentSubGroupHeader.style.display = (filter === '' || anyVisibleInSubGroup) ? "" : "none";
+            }
+            if (currentGroupHeader) {
+                currentGroupHeader.style.display = (filter === '' || anyVisibleInGroup) ? "" : "none";
+            }
+            currentGroupHeader = tr;
+            currentSubGroupHeader = null;
+            anyVisibleInGroup = false;
+            anyVisibleInSubGroup = false;
+        } else if (tr.classList.contains('sub-group-header')) {
+            if (currentSubGroupHeader) {
+                currentSubGroupHeader.style.display = (filter === '' || anyVisibleInSubGroup) ? "" : "none";
+            }
+            currentSubGroupHeader = tr;
+            anyVisibleInSubGroup = false;
         } else {
-            trs[i].style.display = "none";
+            let inputs = tr.getElementsByTagName("input");
+            let selects = tr.getElementsByTagName("select");
+            let textareas = tr.getElementsByTagName("textarea");
+            let text = tr.textContent.toLowerCase() + " ";
+            
+            for (let j=0; j<inputs.length; j++) text += inputs[j].value.toLowerCase() + " ";
+            for (let j=0; j<selects.length; j++) text += selects[j].value.toLowerCase() + " ";
+            for (let j=0; j<textareas.length; j++) text += textareas[j].value.toLowerCase() + " ";
+            
+            if (text.indexOf(filter) > -1) {
+                tr.style.display = "";
+                anyVisibleInGroup = true;
+                anyVisibleInSubGroup = true;
+            } else {
+                tr.style.display = "none";
+            }
         }
     }
-}
+    if (currentSubGroupHeader) {
+        currentSubGroupHeader.style.display = (filter === '' || anyVisibleInSubGroup) ? "" : "none";
+    }
+    if (currentGroupHeader) {
+        currentGroupHeader.style.display = (filter === '' || anyVisibleInGroup) ? "" : "none";
+    }
+};
 
 // --- TEXT EDITOR MODAL ---
 let currentTextType = null;
