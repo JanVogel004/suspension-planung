@@ -561,7 +561,7 @@ function updateDashboard() {
     document.getElementById('progressDetails').innerText = `${erledigt} von ${totalParts} Bauteilen`;
 
     // 2. Status Breakdown
-    const allStatuses = ['Nicht begonnen', 'Zu bestellen', 'Designing', 'Fertigungszeichnung', 'Kontrolle', 'In Fertigung', 'In Lieferung', 'Im Lager', 'Assembled', 'Fertig montiert'];
+    const allStatuses = ['Nicht begonnen', 'Designing', 'Fertigungszeichnung', 'Kontrolle', 'Zu bestellen', 'In Fertigung', 'In Lieferung', 'Im Lager', 'Assembled', 'Fertig montiert'];
     let statHtml = '';
 
     allStatuses.forEach(s => {
