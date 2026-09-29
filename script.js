@@ -1969,10 +1969,11 @@ window.renderGanttChart = function() {
 
             let tooltipText = `${name} (${g} / ${ub})&#10;----------------------------&#10;🟣 Design/CAD: bis ${dK.toLocaleDateString('de-DE')}&#10;🟡 Kontrolle/Puffer: ${p["Kontrollzeit & Puffer"]||0} Tage (bis ${dA.toLocaleDateString('de-DE')})&#10;🔵 Fertigung: ${p["Fertigungsdauer"]||0} Tage (bis ${dL.toLocaleDateString('de-DE')})&#10;🟢 Assembly/Montage: ${parseInt(p["Assembly Zeit"]||0)+parseInt(p["Montage Zeit"]||0)} Tage (bis ${target.toLocaleDateString('de-DE')})`;
 
+            let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
             html += `<tr>
                 <td class="gantt-left-col" style="padding: 8px 14px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: 700; color: var(--text-color); font-size: 0.85rem;" title="${name}">${name}</span>
+                        <a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="font-weight: 700; color: var(--text-color); font-size: 0.85rem; text-decoration: none; border-bottom: 1px dashed currentcolor;" title="Zur Planung springen">${name}</a>
                         ${statusBadge}
                     </div>
                     <div style="font-size: 0.7rem; color: #64748b; margin-top: 2px;"><i class="fa-solid fa-turn-up" style="transform: rotate(90deg); margin-right: 4px;"></i> ${ub}</div>
