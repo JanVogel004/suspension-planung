@@ -1514,6 +1514,47 @@ window.filterNormteile = function() {
         currentGroupHeader.style.display = (filter === '' || anyVisibleInGroup) ? "" : "none";
     }
 };
+window.filterLieferanten = function() {
+    let input = document.getElementById("lieferantenSearch");
+    if (!input) return;
+    let filter = input.value.toLowerCase();
+    let tbody = document.getElementById("lieferantenBody");
+    if (!tbody) return;
+    
+    let trs = tbody.getElementsByTagName("tr");
+    let currentGroupHeader = null;
+    let anyVisibleInGroup = false;
+
+    for (let i = 0; i < trs.length; i++) {
+        let tr = trs[i];
+        if (tr.classList.contains('group-header')) {
+            if (currentGroupHeader) {
+                currentGroupHeader.style.display = (filter === '' || anyVisibleInGroup) ? "" : "none";
+            }
+            currentGroupHeader = tr;
+            anyVisibleInGroup = false;
+        } else {
+            let inputs = tr.getElementsByTagName("input");
+            let selects = tr.getElementsByTagName("select");
+            let textareas = tr.getElementsByTagName("textarea");
+            let text = tr.textContent.toLowerCase() + " ";
+            
+            for (let j=0; j<inputs.length; j++) text += inputs[j].value.toLowerCase() + " ";
+            for (let j=0; j<selects.length; j++) text += selects[j].value.toLowerCase() + " ";
+            for (let j=0; j<textareas.length; j++) text += textareas[j].value.toLowerCase() + " ";
+            
+            if (text.indexOf(filter) > -1) {
+                tr.style.display = "";
+                anyVisibleInGroup = true;
+            } else {
+                tr.style.display = "none";
+            }
+        }
+    }
+    if (currentGroupHeader) {
+        currentGroupHeader.style.display = (filter === '' || anyVisibleInGroup) ? "" : "none";
+    }
+};
 window.filterBauteile = function() {
     let input = document.getElementById("bauteileSearch");
     if (!input) return;
