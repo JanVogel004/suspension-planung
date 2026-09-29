@@ -608,8 +608,13 @@ body.read-only textarea {
 
 .dashboard-details {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 24px;
+}
+@media (max-width: 1200px) {
+    .dashboard-details {
+        grid-template-columns: 1fr 1fr;
+    }
 }
 @media (max-width: 900px) {
     .dashboard-details {

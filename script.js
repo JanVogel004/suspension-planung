@@ -609,7 +609,6 @@ function updateDashboard() {
             criticalDesignHtml += `
                 <tr${rowStyle}>
                     <td${nameStyle}><strong>${part["Bauteil-Name"] || 'Unbenannt'}</strong></td>
-                    <td>${part["Status"]}</td>
                     <td>${cDateStr}</td>
                 </tr>
             `;
@@ -707,7 +706,6 @@ function updateDashboard() {
         buildingHtml += `
             <tr>
                 <td><strong>${ug.name}</strong><br><span style="font-size:0.75rem;color:var(--text-muted);">${ug.baugruppe}</span></td>
-                <td><span style="color:var(--warning); font-size:0.75rem; border:1px solid var(--warning); padding:2px 5px; border-radius:4px;">Ready to Build</span></td>
                 <td><span>${daysLeftGlobal} T</span></td>
                 <td><span>${ug.maxA} T</span></td>
                 <td>${pText}</td>
@@ -721,7 +719,6 @@ function updateDashboard() {
         readyHtml += `
             <tr>
                 <td><strong>${ug.name}</strong><br><span style="font-size:0.75rem;color:var(--text-muted);">${ug.baugruppe}</span></td>
-                <td>${badge}</td>
                 <td><span>${daysLeftGlobal} T</span></td>
                 <td><span>${ug.maxM} T</span></td>
                 <td>${pText}</td>
@@ -835,7 +832,7 @@ function updateDashboard() {
                 <tr>
                     <td><span style="background:var(--primary); padding:2px 6px; border-radius:4px; font-size:0.7rem; color:white;"><i class="fa-solid fa-cube"></i> ${cat}</span></td>
                     <td><strong>${name}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${fertiger}</span></td>
-                    <td><span style="color:var(--danger); font-weight:bold;">Zu bestellen</span></td>
+                    <td><span style="font-weight:bold;">1 Stück</span></td>
                     <td>${link}</td>
                 </tr>
             `;
