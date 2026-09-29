@@ -1778,7 +1778,7 @@ window.renderGanttSummary = function() {
     let sorted = [...bauteileData].map(b => {
         let dates = b.dates || calculateDates(b);
         return { ...b, dates };
-    }).sort((a, b) => a.dates.kontrolle - b.dates.kontrolle).slice(0, 20);
+    }).filter(b => b["Status"] !== 'Fertig montiert').sort((a, b) => a.dates.kontrolle - b.dates.kontrolle).slice(0, 20);
 
     let today = new Date();
     today.setHours(0,0,0,0);
