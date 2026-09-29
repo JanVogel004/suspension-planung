@@ -836,7 +836,6 @@ function updateDashboard() {
                 <tr>
                     <td><span style="background:var(--primary); padding:2px 6px; border-radius:4px; font-size:0.7rem; color:white;"><i class="fa-solid fa-cube"></i> ${cat}</span></td>
                     <td><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${name}</strong></a><br><span style="font-size:0.75rem; color:var(--text-muted);">${fertiger}</span></td>
-                    <td><span style="font-weight:bold;">1 Stück</span></td>
                 </tr>
             `;
         }
@@ -881,7 +880,6 @@ function updateDashboard() {
                         <strong><i class="fa-solid fa-list-check"></i> ${missingNormteileCount} verschiedene Normteile fehlen</strong>
                     </a>
                 </td>
-                <td><span style="color:var(--danger); font-weight:bold;">Aktion nötig</span></td>
             </tr>
         `;
     }
