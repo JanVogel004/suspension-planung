@@ -843,6 +843,7 @@ function updateDashboard() {
     });
 
     // B) Normteile
+    let missingNormteileCount = 0;
     normteileData.forEach((row, i) => {
         let nName = row['Normteil Name'];
         let nCat = row['Kategorie'];
@@ -868,18 +869,22 @@ function updateDashboard() {
 
         if (!(totalQty <= stock || (totalQty <= stock + ordered && arrived)) && !(totalQty <= stock + ordered && !arrived)) {
             let missing = totalQty - stock - ordered;
-            let shopUrl = row['Shop Link'];
-            let nameLink = shopUrl ? `<a href="${shopUrl}" target="_blank" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;" title="Zum Shop"><strong>${nName}</strong> <i class="fa-solid fa-cart-shopping" style="color:var(--info); font-size:0.8em;"></i></a>` : `<a href="javascript:void(0)" onclick="switchTab('normteile')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${nName}</strong></a>`;
-            
-            toOrderHtml += `
-                <tr>
-                    <td><span style="background:var(--warning); padding:2px 6px; border-radius:4px; font-size:0.7rem; color:var(--bg-main); font-weight:bold;"><i class="fa-solid fa-nut"></i> ${nCat}</span></td>
-                    <td>${nameLink}<br><span style="font-size:0.75rem; color:var(--text-muted);">Benötigt: ${totalQty} | Bestand: ${stock}</span></td>
-                    <td><span style="color:var(--danger); font-weight:bold;">${missing > 0 ? missing : '?'} Stück fehlen</span></td>
-                </tr>
-            `;
+            if (missing > 0) missingNormteileCount++;
         }
     });
+
+    if (missingNormteileCount > 0) {
+        toOrderHtml += `
+            <tr>
+                <td colspan="2">
+                    <a href="javascript:void(0)" onclick="switchTab('normteile'); setTimeout(() => { let i = document.getElementById('normteileSearch'); if(i) { i.value='#missing'; filterNormteile(); } }, 100);" style="color:var(--info); text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;" title="Normteile-Reiter öffnen">
+                        <strong><i class="fa-solid fa-list-check"></i> ${missingNormteileCount} verschiedene Normteile fehlen</strong>
+                    </a>
+                </td>
+                <td><span style="color:var(--danger); font-weight:bold;">Aktion nötig</span></td>
+            </tr>
+        `;
+    }
 
     let toOrderBody = document.getElementById('toOrderBody');
     if (toOrderBody) {
@@ -1204,6 +1209,14 @@ function renderNormteile() {
             if (totalQty > 0) {
                 let hiddenText = hiddenSearchArr.join(' ');
                 usageStr = `<strong>Gesamt: ${totalQty}x</strong><span style="display:none;">${hiddenText}</span><br><span style="font-size:0.8rem;color:var(--text-muted)">${bauteileList.join('<br>')}</span>`;
+                
+                let stock = parseInt(row['Bestand']) || 0;
+                let ordered = parseInt(row['Bestellte Stückzahl (Zahl)']) || 0;
+                let arrived = row['Angekommen (Check)'] === 'true' || row['Angekommen (Check)'] === true || row['Angekommen (Check)'] === 'Ja' || row['Angekommen (Check)'] === '1';
+                if (!(totalQty <= stock || (totalQty <= stock + ordered && arrived)) && !(totalQty <= stock + ordered && !arrived)) {
+                    let missing = totalQty - stock - ordered;
+                    if (missing > 0) tr.setAttribute('data-missing', 'true');
+                }
             }
         }
         
@@ -1502,7 +1515,14 @@ window.filterNormteile = function() {
             for (let j=0; j<selects.length; j++) text += selects[j].value.toLowerCase() + " ";
             for (let j=0; j<textareas.length; j++) text += textareas[j].value.toLowerCase() + " ";
             
-            if (text.indexOf(filter) > -1) {
+            let isMatch = false;
+            if (filter === '#missing') {
+                isMatch = tr.getAttribute('data-missing') === 'true';
+            } else {
+                isMatch = text.indexOf(filter) > -1;
+            }
+            
+            if (isMatch) {
                 tr.style.display = "";
                 anyVisibleInGroup = true;
             } else {
