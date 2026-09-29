@@ -561,7 +561,7 @@ function updateDashboard() {
     document.getElementById('progressDetails').innerText = `${erledigt} von ${totalParts} Bauteilen`;
 
     // 2. Status Breakdown
-    const allStatuses = ['Nicht begonnen', 'Designing', 'Fertigungszeichnung', 'Kontrolle', 'In Fertigung', 'In Lieferung', 'Im Lager', 'Assembled', 'Fertig montiert'];
+    const allStatuses = ['Nicht begonnen', 'Zu bestellen', 'Designing', 'Fertigungszeichnung', 'Kontrolle', 'In Fertigung', 'In Lieferung', 'Im Lager', 'Assembled', 'Fertig montiert'];
     let statHtml = '';
 
     allStatuses.forEach(s => {
@@ -818,6 +818,75 @@ function updateDashboard() {
     if (eOrdered) eOrdered.innerText = nOrdered;
     let eReady = document.getElementById('ntReady');
     if (eReady) eReady.innerText = nReady;
+
+    // 6. Zu bestellen Panel
+    let toOrderHtml = '';
+    
+    // A) Bauteile
+    bauteileData.forEach((b, i) => {
+        if (b["Status"] === "Zu bestellen") {
+            let cat = b["Baugruppe"] || "Bauteil";
+            let name = b["Bauteil-Name"] || "Unbenannt";
+            let fertiger = b["Fertiger / Firma"] || "Kein Fertiger";
+            let link = `<a href="javascript:void(0)" onclick="switchTab('planung')" style="color:var(--primary); text-decoration:none;"><i class="fa-solid fa-arrow-right"></i> Zur Planung</a>`;
+            
+            toOrderHtml += `
+                <tr>
+                    <td><span style="background:var(--primary); padding:2px 6px; border-radius:4px; font-size:0.7rem; color:white;"><i class="fa-solid fa-cube"></i> ${cat}</span></td>
+                    <td><strong>${name}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${fertiger}</span></td>
+                    <td><span style="color:var(--danger); font-weight:bold;">Zu bestellen</span></td>
+                    <td>${link}</td>
+                </tr>
+            `;
+        }
+    });
+
+    // B) Normteile
+    normteileData.forEach((row, i) => {
+        let nName = row['Normteil Name'];
+        let nCat = row['Kategorie'];
+        if (!nName || !nCat) return;
+
+        let totalQty = 0;
+        bauteileData.forEach(b => {
+            try {
+                let reqs = JSON.parse(b['Benötigte Normteile'] || '[]');
+                reqs.forEach(r => {
+                    if (r.name === nName && r.cat === nCat) {
+                        totalQty += (parseInt(r.qty) || 1);
+                    }
+                });
+            } catch(e) {}
+        });
+
+        if (totalQty === 0) return;
+        
+        let stock = parseInt(row['Bestand']) || 0;
+        let ordered = parseInt(row['Bestellte Stückzahl (Zahl)']) || 0;
+        let arrived = row['Angekommen (Check)'] === 'true' || row['Angekommen (Check)'] === true || row['Angekommen (Check)'] === 'Ja' || row['Angekommen (Check)'] === '1';
+
+        if (!(totalQty <= stock || (totalQty <= stock + ordered && arrived)) && !(totalQty <= stock + ordered && !arrived)) {
+            let missing = totalQty - stock - ordered;
+            let linkStr = row['Shop Link'] ? `<a href="${row['Shop Link']}" target="_blank" style="color:var(--info); text-decoration:none;"><i class="fa-solid fa-cart-shopping"></i> Shop Link</a>` : `<a href="javascript:void(0)" onclick="switchTab('normteile')" style="color:var(--primary); text-decoration:none;"><i class="fa-solid fa-arrow-right"></i> Zu Normteile</a>`;
+            
+            toOrderHtml += `
+                <tr>
+                    <td><span style="background:var(--warning); padding:2px 6px; border-radius:4px; font-size:0.7rem; color:var(--bg-main); font-weight:bold;"><i class="fa-solid fa-nut"></i> ${nCat}</span></td>
+                    <td><strong>${nName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">Benötigt: ${totalQty} | Bestand: ${stock}</span></td>
+                    <td><span style="color:var(--danger); font-weight:bold;">${missing > 0 ? missing : '?'} Stück fehlen</span></td>
+                    <td>${linkStr}</td>
+                </tr>
+            `;
+        }
+    });
+
+    let toOrderBody = document.getElementById('toOrderBody');
+    if (toOrderBody) {
+        if (toOrderHtml === '') {
+            toOrderHtml = `<tr><td colspan="4" style="text-align:center; padding:15px; color:var(--text-muted);"><i class="fa-solid fa-check-circle" style="color:var(--success);"></i> Alles erledigt! Keine offenen Bestellungen.</td></tr>`;
+        }
+        toOrderBody.innerHTML = toOrderHtml;
+    }
 
     if (typeof updateGanttFilters === 'function') updateGanttFilters();
     if (typeof renderGanttSummary === 'function') renderGanttSummary();
