@@ -828,7 +828,8 @@ function updateDashboard() {
             let cat = b["Baugruppe"] || "Bauteil";
             let name = b["Bauteil-Name"] || "Unbenannt";
             let fertiger = b["Fertiger / Firma"] || "Kein Fertiger";
-            let link = `<a href="javascript:void(0)" onclick="switchTab('planung')" style="color:var(--primary); text-decoration:none;"><i class="fa-solid fa-arrow-right"></i> Zur Planung</a>`;
+            let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            let link = `<a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:var(--primary); text-decoration:none;"><i class="fa-solid fa-arrow-right"></i> Zur Planung</a>`;
             
             toOrderHtml += `
                 <tr>
@@ -1460,6 +1461,14 @@ function undo() {
 }
 
 // Search functionality
+window.jumpToBauteil = function(name) {
+    switchTab('planung');
+    let searchInput = document.getElementById('bauteileSearch');
+    if (searchInput) {
+        searchInput.value = name;
+        filterBauteile();
+    }
+};
 function filterBauteile() {
     let input = document.getElementById("bauteileSearch");
     let filter = input.value.toLowerCase();
