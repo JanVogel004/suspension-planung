@@ -404,7 +404,9 @@ function renderBauteile() {
                 html += `<td id="date-liefer-${index}" class="readonly">${dates.lieferdatum.toLocaleDateString('de-DE')}</td>`;
             }
         });
-        
+        if (row['Status'] === 'Fertig montiert') {
+            tr.style.opacity = '0.4';
+        }
         html += `<td><button class="delete-btn" onclick="delB(${index})"><i class="fa-solid fa-trash"></i></button></td>`;
         tr.innerHTML = html;
         tbody.appendChild(tr);
@@ -1811,7 +1813,8 @@ window.renderGanttSummary = function() {
         let wAss = Math.max(2, endAss - endFert);
 
         let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-        html += `<tr>
+        let opacityStyle = p["Status"] === 'Fertig montiert' ? ' opacity: 0.4;' : '';
+        html += `<tr style="${opacityStyle}">
             <td class="gantt-left-col" style="width: 240px; min-width: 240px; max-width: 240px;">
                 <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;">${bg}</div>
                 <a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="font-weight: 700; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; border-bottom: 1px dashed currentcolor; display: block;" title="${name}">${name}</a>
@@ -1971,7 +1974,8 @@ window.renderGanttChart = function() {
             let tooltipText = `${name} (${g} / ${ub})&#10;----------------------------&#10;🟣 Design/CAD: bis ${dK.toLocaleDateString('de-DE')}&#10;🟡 Kontrolle/Puffer: ${p["Kontrollzeit & Puffer"]||0} Tage (bis ${dA.toLocaleDateString('de-DE')})&#10;🔵 Fertigung: ${p["Fertigungsdauer"]||0} Tage (bis ${dL.toLocaleDateString('de-DE')})&#10;🟢 Assembly/Montage: ${parseInt(p["Assembly Zeit"]||0)+parseInt(p["Montage Zeit"]||0)} Tage (bis ${target.toLocaleDateString('de-DE')})`;
 
             let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-            html += `<tr>
+            let opacityStyle = status === 'Fertig montiert' ? ' opacity: 0.4;' : '';
+            html += `<tr style="${opacityStyle}">
                 <td class="gantt-left-col" style="padding: 8px 14px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="font-weight: 700; color: var(--text-color); font-size: 0.85rem; text-decoration: none; border-bottom: 1px dashed currentcolor;" title="Zur Planung springen">${name}</a>
