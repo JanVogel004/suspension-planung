@@ -606,9 +606,11 @@ function updateDashboard() {
             let rowStyle = isAlarm ? ` style="background-color: rgba(239, 68, 68, 0.15);"` : ``;
             let nameStyle = isAlarm ? ` style="color: var(--danger);"` : ``;
 
+            let pName = part["Bauteil-Name"] || 'Unbenannt';
+            let escapedName = pName.replace(/'/g, "\\'").replace(/"/g, "&quot;");
             criticalDesignHtml += `
                 <tr${rowStyle}>
-                    <td${nameStyle}><strong>${part["Bauteil-Name"] || 'Unbenannt'}</strong></td>
+                    <td${nameStyle}><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${pName}</strong></a></td>
                     <td>${cDateStr}</td>
                 </tr>
             `;
@@ -690,9 +692,10 @@ function updateDashboard() {
     listWaiting.sort((a,b) => a.minPW - b.minPW).forEach(ug => {
         let missingStr = ug.missingNames.join(', ');
         let pText = ug.minPW < 0 ? `<span style="color:var(--danger);font-weight:bold;">${ug.minPW} T</span>` : `<span style="color:var(--success);">${ug.minPW} T</span>`;
+        let escapedName = ug.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
         waitingHtml += `
             <tr>
-                <td><strong>${ug.name}</strong><br><span style="font-size:0.75rem;color:var(--text-muted);">${ug.baugruppe}</span></td>
+                <td><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${ug.name}</strong></a><br><span style="font-size:0.75rem;color:var(--text-muted);">${ug.baugruppe}</span></td>
                 <td style="color:var(--danger); font-size:0.8rem;">Fehlt: ${missingStr}</td>
                 <td><span>${daysLeftGlobal} T</span></td>
                 <td><span>${ug.maxW} T</span></td>
@@ -703,9 +706,10 @@ function updateDashboard() {
 
     listBuilding.sort((a,b) => a.minPA - b.minPA).forEach(ug => {
         let pText = ug.minPA < 0 ? `<span style="color:var(--danger);font-weight:bold;">${ug.minPA} T</span>` : `<span style="color:var(--success);">${ug.minPA} T</span>`;
+        let escapedName = ug.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
         buildingHtml += `
             <tr>
-                <td><strong>${ug.name}</strong><br><span style="font-size:0.75rem;color:var(--text-muted);">${ug.baugruppe}</span></td>
+                <td><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${ug.name}</strong></a><br><span style="font-size:0.75rem;color:var(--text-muted);">${ug.baugruppe}</span></td>
                 <td><span>${daysLeftGlobal} T</span></td>
                 <td><span>${ug.maxA} T</span></td>
                 <td>${pText}</td>
@@ -714,11 +718,11 @@ function updateDashboard() {
     });
 
     listReady.sort((a,b) => a.minPM - b.minPM).forEach(ug => {
-        let badge = ug.status === 'Montiert' ? `<span style="color:var(--success); font-size:0.75rem; border:1px solid var(--success); padding:2px 5px; border-radius:4px;">Montiert</span>` : `<span style="color:var(--primary); font-size:0.75rem; border:1px solid var(--primary); padding:2px 5px; border-radius:4px;">Assembled</span>`;
         let pText = ug.minPM < 0 ? `<span style="color:var(--danger);font-weight:bold;">${ug.minPM} T</span>` : `<span style="color:var(--success);">${ug.minPM} T</span>`;
+        let escapedName = ug.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
         readyHtml += `
             <tr>
-                <td><strong>${ug.name}</strong><br><span style="font-size:0.75rem;color:var(--text-muted);">${ug.baugruppe}</span></td>
+                <td><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${ug.name}</strong></a><br><span style="font-size:0.75rem;color:var(--text-muted);">${ug.baugruppe}</span></td>
                 <td><span>${daysLeftGlobal} T</span></td>
                 <td><span>${ug.maxM} T</span></td>
                 <td>${pText}</td>
@@ -741,10 +745,11 @@ function updateDashboard() {
     eigenParts.sort((a,b) => a.puffer - b.puffer).forEach(item => {
         let p = item.p;
         let pText = item.puffer < 0 ? `<span style="color:var(--danger);font-weight:bold;">${item.puffer} T</span>` : `<span style="color:var(--success);">${item.puffer} T</span>`;
+        let pName = p["Bauteil-Name"] || 'Unbenannt';
+        let escapedName = pName.replace(/'/g, "\\'").replace(/"/g, "&quot;");
         buildingHtml += `
             <tr>
-                <td><strong>${p["Bauteil-Name"]}</strong><br><span style="font-size:0.75rem;color:var(--text-muted);">${p["Baugruppe"]} (Eigen)</span></td>
-                <td><span style="color:var(--warning); font-size:0.75rem; border:1px solid var(--warning); padding:2px 5px; border-radius:4px;">${p["Status"]}</span></td>
+                <td><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${pName}</strong></a><br><span style="font-size:0.75rem;color:var(--text-muted);">${p["Baugruppe"]} (Eigen)</span></td>
                 <td><span>${daysLeftGlobal} T</span></td>
                 <td><span>${item.requiredTime} T</span></td>
                 <td>${pText}</td>
@@ -826,14 +831,12 @@ function updateDashboard() {
             let name = b["Bauteil-Name"] || "Unbenannt";
             let fertiger = b["Fertiger / Firma"] || "Kein Fertiger";
             let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-            let link = `<a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:var(--primary); text-decoration:none;"><i class="fa-solid fa-arrow-right"></i> Zur Planung</a>`;
             
             toOrderHtml += `
                 <tr>
                     <td><span style="background:var(--primary); padding:2px 6px; border-radius:4px; font-size:0.7rem; color:white;"><i class="fa-solid fa-cube"></i> ${cat}</span></td>
-                    <td><strong>${name}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${fertiger}</span></td>
+                    <td><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${name}</strong></a><br><span style="font-size:0.75rem; color:var(--text-muted);">${fertiger}</span></td>
                     <td><span style="font-weight:bold;">1 Stück</span></td>
-                    <td>${link}</td>
                 </tr>
             `;
         }
@@ -865,14 +868,14 @@ function updateDashboard() {
 
         if (!(totalQty <= stock || (totalQty <= stock + ordered && arrived)) && !(totalQty <= stock + ordered && !arrived)) {
             let missing = totalQty - stock - ordered;
-            let linkStr = row['Shop Link'] ? `<a href="${row['Shop Link']}" target="_blank" style="color:var(--info); text-decoration:none;"><i class="fa-solid fa-cart-shopping"></i> Shop Link</a>` : `<a href="javascript:void(0)" onclick="switchTab('normteile')" style="color:var(--primary); text-decoration:none;"><i class="fa-solid fa-arrow-right"></i> Zu Normteile</a>`;
+            let shopUrl = row['Shop Link'];
+            let nameLink = shopUrl ? `<a href="${shopUrl}" target="_blank" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;" title="Zum Shop"><strong>${nName}</strong> <i class="fa-solid fa-cart-shopping" style="color:var(--info); font-size:0.8em;"></i></a>` : `<a href="javascript:void(0)" onclick="switchTab('normteile')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${nName}</strong></a>`;
             
             toOrderHtml += `
                 <tr>
                     <td><span style="background:var(--warning); padding:2px 6px; border-radius:4px; font-size:0.7rem; color:var(--bg-main); font-weight:bold;"><i class="fa-solid fa-nut"></i> ${nCat}</span></td>
-                    <td><strong>${nName}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">Benötigt: ${totalQty} | Bestand: ${stock}</span></td>
+                    <td>${nameLink}<br><span style="font-size:0.75rem; color:var(--text-muted);">Benötigt: ${totalQty} | Bestand: ${stock}</span></td>
                     <td><span style="color:var(--danger); font-weight:bold;">${missing > 0 ? missing : '?'} Stück fehlen</span></td>
-                    <td>${linkStr}</td>
                 </tr>
             `;
         }
