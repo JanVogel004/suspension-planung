@@ -1186,6 +1186,7 @@ function renderNormteile() {
         if (nName && nCat) {
             let totalQty = 0;
             let bauteileList = [];
+            let hiddenSearchArr = [];
             bauteileData.forEach(b => {
                 try {
                     let reqs = JSON.parse(b['Benötigte Normteile'] || '[]');
@@ -1194,12 +1195,15 @@ function renderNormteile() {
                             let q = parseInt(r.qty) || 1;
                             totalQty += q;
                             bauteileList.push(`${b['Bauteil-Name'] || 'Unbenannt'} (${q}x)`);
+                            hiddenSearchArr.push(b['Baugruppe'] || '');
+                            hiddenSearchArr.push(b['Unterbaugruppe'] || '');
                         }
                     });
                 } catch(e) {}
             });
             if (totalQty > 0) {
-                usageStr = `<strong>Gesamt: ${totalQty}x</strong><br><span style="font-size:0.8rem;color:var(--text-muted)">${bauteileList.join('<br>')}</span>`;
+                let hiddenText = hiddenSearchArr.join(' ');
+                usageStr = `<strong>Gesamt: ${totalQty}x</strong><span style="display:none;">${hiddenText}</span><br><span style="font-size:0.8rem;color:var(--text-muted)">${bauteileList.join('<br>')}</span>`;
             }
         }
         
@@ -1467,6 +1471,47 @@ window.jumpToBauteil = function(name) {
     if (searchInput) {
         searchInput.value = name;
         filterBauteile();
+    }
+};
+window.filterNormteile = function() {
+    let input = document.getElementById("normteileSearch");
+    if (!input) return;
+    let filter = input.value.toLowerCase();
+    let tbody = document.getElementById("normteileBody");
+    if (!tbody) return;
+    
+    let trs = tbody.getElementsByTagName("tr");
+    let currentGroupHeader = null;
+    let anyVisibleInGroup = false;
+
+    for (let i = 0; i < trs.length; i++) {
+        let tr = trs[i];
+        if (tr.classList.contains('group-header')) {
+            if (currentGroupHeader) {
+                currentGroupHeader.style.display = (filter === '' || anyVisibleInGroup) ? "" : "none";
+            }
+            currentGroupHeader = tr;
+            anyVisibleInGroup = false;
+        } else {
+            let inputs = tr.getElementsByTagName("input");
+            let selects = tr.getElementsByTagName("select");
+            let textareas = tr.getElementsByTagName("textarea");
+            let text = tr.textContent.toLowerCase() + " ";
+            
+            for (let j=0; j<inputs.length; j++) text += inputs[j].value.toLowerCase() + " ";
+            for (let j=0; j<selects.length; j++) text += selects[j].value.toLowerCase() + " ";
+            for (let j=0; j<textareas.length; j++) text += textareas[j].value.toLowerCase() + " ";
+            
+            if (text.indexOf(filter) > -1) {
+                tr.style.display = "";
+                anyVisibleInGroup = true;
+            } else {
+                tr.style.display = "none";
+            }
+        }
+    }
+    if (currentGroupHeader) {
+        currentGroupHeader.style.display = (filter === '' || anyVisibleInGroup) ? "" : "none";
     }
 };
 function filterBauteile() {
