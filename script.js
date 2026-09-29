@@ -56,10 +56,15 @@ let normteileColumns = [];
 let savedDate = localStorage.getItem('suspension_target_date') || '2026-12-01';
 let targetDate = new Date(savedDate);
 
+let savedDFDate = localStorage.getItem('suspension_df_date') || '2025-12-24';
+let dfDateGlobal = new Date(savedDFDate);
+
 // Set initial value in HTML
 document.addEventListener("DOMContentLoaded", () => {
     let input = document.getElementById('targetDateInput');
     if (input) input.value = savedDate;
+    let dfInput = document.getElementById('designFreezeDateInput');
+    if (dfInput) dfInput.value = savedDFDate;
 });
 
 function updateTargetDate(newDateStr) {
@@ -70,6 +75,17 @@ function updateTargetDate(newDateStr) {
     localStorage.setItem('suspension_target_date', newDateStr);
     renderBauteile();
     updateDashboard();
+    if(typeof renderGanttChart === 'function') renderGanttChart();
+}
+
+function updateDesignFreezeDate(newDateStr) {
+    pushHistory();
+    if (!newDateStr) return;
+    dfDateGlobal = new Date(newDateStr);
+    markDirty();
+    localStorage.setItem('suspension_df_date', newDateStr);
+    updateDashboard(); // re-renders mini-gantt
+    if(typeof renderGanttChart === 'function') renderGanttChart();
 }
 
 // Tab Switching
@@ -1787,10 +1803,7 @@ window.renderGanttSummary = function() {
     
     let totalSpan = Math.max(1, target - today);
 
-    let dfDate = new Date(target.getFullYear(), 11, 24);
-    if (dfDate > target) {
-        dfDate = new Date(target.getFullYear() - 1, 11, 24);
-    }
+    let dfDate = dfDateGlobal;
     let dfPct = ((dfDate - today) / totalSpan) * 100;
 
     let html = `<table class="gantt-table" style="margin-top: 5px;">
@@ -1907,10 +1920,7 @@ window.renderGanttChart = function() {
     let totalMs = maxDate - minDate;
     if (totalMs <= 0) totalMs = 1;
 
-    let dfDate = new Date(target.getFullYear(), 11, 24);
-    if (dfDate > target) {
-        dfDate = new Date(target.getFullYear() - 1, 11, 24);
-    }
+    let dfDate = dfDateGlobal;
     let dfPct = ((dfDate - minDate) / totalMs) * 100;
 
     // Generate columns
@@ -1958,8 +1968,8 @@ window.renderGanttChart = function() {
         </thead>
         <tbody>`;
 
-    // Group by Baugruppe -> Unterbaugruppe
     const groups = [...new Set(filtered.map(b => b["Baugruppe"] || 'Sonstiges'))].sort();
+    let isFirstRow = true;
     
     groups.forEach(g => {
         let gParts = filtered.filter(b => (b["Baugruppe"] || 'Sonstiges') === g);
@@ -2037,8 +2047,8 @@ window.renderGanttChart = function() {
                 <td colspan="${cols.length}" class="gantt-time-cell">
                     <div class="gantt-timeline-container">
                         ${todayPct >= 0 && todayPct <= 100 ? `<div class="gantt-today-line" style="left: ${todayPct}%;" title="Heute (${today.toLocaleDateString('de-DE')})"></div>` : ''}
-                        ${targetPct >= 0 && targetPct <= 100 ? `<div class="gantt-target-line" style="left: ${targetPct}%;" title="Rolling Chassis Target (${target.toLocaleDateString('de-DE')})"></div>` : ''}
-                        ${dfPct >= 0 && dfPct <= 100 ? `<div class="gantt-target-line" style="left: ${dfPct}%;" title="Design Freeze (${dfDate.toLocaleDateString('de-DE')})"></div>` : ''}
+                        ${targetPct >= 0 && targetPct <= 100 ? `<div class="gantt-target-line" style="left: ${targetPct}%;" title="Rolling Chassis Target (${target.toLocaleDateString('de-DE')})">${isFirstRow ? `<div style="position: absolute; top: -20px; left: 4px; font-size: 0.65rem; color: #10b981; font-weight: bold; white-space: nowrap; z-index: 20;">Rolling Chassis</div>` : ''}</div>` : ''}
+                        ${dfPct >= 0 && dfPct <= 100 ? `<div class="gantt-target-line" style="left: ${dfPct}%;" title="Design Freeze (${dfDate.toLocaleDateString('de-DE')})">${isFirstRow ? `<div style="position: absolute; top: -20px; left: 4px; font-size: 0.65rem; color: #10b981; font-weight: bold; white-space: nowrap; z-index: 20;">Design Freeze</div>` : ''}</div>` : ''}
                         
                         <div class="gantt-bar-wrapper" style="left: ${startPct}%; width: ${barWidthPct}%;" title="${tooltipText}">
                             <div class="gantt-seg gantt-seg-cad" style="width: ${pCAD}%;">CAD</div>
@@ -2049,6 +2059,8 @@ window.renderGanttChart = function() {
                     </div>
                 </td>
             </tr>`;
+            
+            isFirstRow = false;
         });
     });
 

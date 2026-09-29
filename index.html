@@ -432,6 +432,10 @@
                                   <option value="months">Monate</option>
                               </select>
                           </div>
+                          <div style="display: flex; align-items: center; gap: 6px; background: #0f172a; padding: 6px 12px; border-radius: 8px; border: 1px solid #334155;">
+                              <span style="font-size: 0.8rem; color: #94a3b8;"><i class="fa-regular fa-snowflake"></i> Design Freeze:</span>
+                              <input type="date" id="designFreezeDateInput" onchange="updateDesignFreezeDate(this.value)" style="background: transparent; border: none; color: white; font-weight: 600; outline: none; cursor: pointer; padding: 0;">
+                          </div>
                       </div>
                   </div>
                   <div class="gantt-legend" style="display: flex; gap: 18px; align-items: center; flex-wrap: wrap; margin-bottom: 15px; background: rgba(15, 23, 42, 0.6); padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
