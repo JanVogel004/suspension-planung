@@ -203,13 +203,21 @@ function showToast() {
 }
 
 function isStandardBCol(col) {
-    return ['Baugruppe', 'Unterbaugruppe', 'Unterbaugruppen-Status', 'Bauteil-Name', 'Fertiger / Firma', 'Verantwortlich', 'Dringlichkeit', 'Status', 'Assembly Zeit', 'Montage Zeit', 'Fertigungsdauer', 'Kontrollzeit & Puffer', 'Notizen', 'Benötigte Normteile'].includes(col);
+    let lc = col.toLowerCase();
+    if (lc.includes('assembly') || lc.includes('montage') || lc.includes('fertigung') || lc.includes('kontroll')) return true;
+    return ['baugruppe', 'unterbaugruppe', 'unterbaugruppen-status', 'bauteil-name', 'fertiger / firma', 'verantwortlich', 'dringlichkeit', 'status', 'notizen', 'benötigte normteile'].includes(lc);
 }
 function calculateDates(row) {
-    let assembly = parseInt(row["Assembly Zeit"]) || 0;
-    let montage = parseInt(row["Montage Zeit"]) || 0;
-    let fertigung = parseInt(row["Fertigungsdauer"]) || 0;
-    let kontrolle = parseInt(row["Kontrollzeit & Puffer"]) || 0;
+    let keys = Object.keys(row);
+    let getVal = (search) => {
+        let key = keys.find(k => k.toLowerCase().includes(search));
+        return key ? parseInt(row[key]) || 0 : 0;
+    };
+    
+    let assembly = getVal('assembly');
+    let montage = getVal('montage');
+    let fertigung = getVal('fertigung');
+    let kontrolle = getVal('kontroll');
     
     // Lieferdatum (when it must arrive from manufacturer)
     let dLiefer = new Date(targetDate);
@@ -239,13 +247,14 @@ function renderBauteile() {
     // Build Head
     let headHtml = '<tr>';
     bauteileColumns.forEach(col => {
-        if (col === 'Assembly Zeit' || col === 'Montage Zeit' || col === 'Unterbaugruppen-Status') return;
+        let lc = col.toLowerCase();
+        if (lc.includes('assembly') || lc.includes('montage') || lc === 'unterbaugruppen-status') return;
         let sClass = col === 'Bauteil-Name' ? ' class="sticky-col-main"' : '';
         headHtml += `<th${sClass}>
             ${displayCol(col)}
             ${!isStandardBCol(col) ? ` <button class="delete-btn" style="padding:2px; font-size:10px" onclick="delBauteilColumn('${col}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
         </th>`;
-        if (col === 'Kontrollzeit & Puffer') {
+        if (lc.includes('kontroll')) {
             headHtml += `<th>Fertig zur Kontrolle (CAD)</th>`;
             headHtml += `<th>Spät. Abschickdatum</th>`;
             headHtml += `<th>Spät. Lieferdatum</th>`;
@@ -378,7 +387,7 @@ function renderBauteile() {
                     <option value="Assembled" ${val==='Assembled'?'selected':''}>Assembled</option>
                     <option value="Fertig montiert" ${val==='Fertig montiert'?'selected':''}>Fertig montiert</option>
                 </select></td>`;
-            } else if (col === 'Assembly Zeit' || col === 'Montage Zeit' || col === 'Fertigungsdauer' || col === 'Kontrollzeit & Puffer') {
+            } else if (col.toLowerCase().includes('assembly') || col.toLowerCase().includes('montage') || col.toLowerCase().includes('fertigung') || col.toLowerCase().includes('kontroll')) {
                 html += `<td><input type="number" value="${val}" onchange="updateB(${index}, '${col}', this.value); renderBauteile();"></td>`;
             } else if (col === 'Benötigte Normteile') {
                 let count = 0;
@@ -413,7 +422,7 @@ function renderBauteile() {
                 }
             }
             
-            if (col === 'Kontrollzeit & Puffer') {
+            if (col.toLowerCase().includes('kontroll')) {
                 let dates = calculateDates(row);
                 html += `<td id="date-kontrolle-${index}" class="readonly" style="color:var(--warning)">${dates.kontrolle.toLocaleDateString('de-DE')}</td>`;
                 html += `<td id="date-abschick-${index}" class="readonly" style="color:var(--danger)">${dates.abschickdatum.toLocaleDateString('de-DE')}</td>`;
@@ -2027,7 +2036,7 @@ window.renderGanttChart = function() {
                 statusBadge = `<span style="background: #475569; color: #cbd5e1; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 6px;">Ausstehend</span>`;
             }
 
-            let tooltipText = `${name} (${g} / ${ub})&#10;----------------------------&#10;🟣 Design/CAD: bis ${dK.toLocaleDateString('de-DE')}&#10;🟡 Kontrolle/Puffer: ${p["Kontrollzeit & Puffer"]||0} Tage (bis ${dA.toLocaleDateString('de-DE')})&#10;🔵 Fertigung: ${p["Fertigungsdauer"]||0} Tage (bis ${dL.toLocaleDateString('de-DE')})&#10;🟢 Assembly/Montage: ${parseInt(p["Assembly Zeit"]||0)+parseInt(p["Montage Zeit"]||0)} Tage (bis ${target.toLocaleDateString('de-DE')})`;
+            let tooltipText = `${name} (${g} / ${ub})&#10;----------------------------&#10;🟣 Design/CAD: bis ${dK.toLocaleDateString('de-DE')}&#10;🟡 Kontrolle/Puffer: ${p["Kontrollzeit & Puffer"] || p["Kontrolle"] || 0} Tage (bis ${dA.toLocaleDateString('de-DE')})&#10;🔵 Fertigung: ${p["Fertigungsdauer"] || p["Fertigungsdauer / Lieferzeit"] || 0} Tage (bis ${dL.toLocaleDateString('de-DE')})&#10;🟢 Assembly/Montage: ${parseInt(p["Assembly Zeit"]||0)+parseInt(p["Montage Zeit"]||0)} Tage (bis ${target.toLocaleDateString('de-DE')})`;
 
             let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
             
