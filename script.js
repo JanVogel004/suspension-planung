@@ -1797,7 +1797,7 @@ window.renderGanttSummary = function() {
         <thead>
             <tr>
                 <th class="gantt-left-col" style="width: 240px; min-width: 240px; max-width: 240px; background: #0f172a !important;">Kritische Bauteile (Top 20)</th>
-                <th style="width: 100%; text-align: left; padding-left: 15px; color: #cbd5e1;">Zeitstrahl (Heute <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i> <span style="color:#9333ea;">Design Freeze</span> <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i> Target: ${target.toLocaleDateString('de-DE')})</th>
+                <th style="width: 100%; text-align: left; padding-left: 15px; color: #cbd5e1;">Zeitstrahl (Heute <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i> <span style="color:#10b981;">Design Freeze</span> <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i> <span style="color:#10b981;">Target: ${target.toLocaleDateString('de-DE')}</span>)</th>
             </tr>
         </thead>
         <tbody>`;
@@ -1846,7 +1846,8 @@ window.renderGanttSummary = function() {
             </td>
             <td class="gantt-time-cell" style="padding: 6px 12px !important;">
                 <div style="position: relative; width: 100%; height: 26px; background: rgba(0,0,0,0.25); border-radius: 6px; overflow: hidden; display: flex; border: 1px solid rgba(255,255,255,0.05);">
-                    ${dfPct >= 0 && dfPct <= 100 ? `<div style="position: absolute; left: ${dfPct}%; top: 0; bottom: 0; border-left: 2px dashed #9333ea; z-index: 10;" title="Design Freeze (${dfDate.toLocaleDateString('de-DE')})"></div>` : ''}
+                    ${dfPct >= 0 && dfPct <= 100 ? `<div style="position: absolute; left: ${dfPct}%; top: 0; bottom: 0; border-left: 2px dashed #10b981; z-index: 10;" title="Design Freeze (${dfDate.toLocaleDateString('de-DE')})"></div>` : ''}
+                    <div style="position: absolute; left: 100%; top: 0; bottom: 0; border-left: 2px dashed #10b981; z-index: 10; margin-left: -2px;" title="Rolling Chassis Target (${target.toLocaleDateString('de-DE')})"></div>
                     <div style="width: ${startCAD}%; background: transparent;"></div>
                     <div class="gantt-seg-kontrolle" style="width: ${wCAD}%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: white; font-weight: bold; border-radius: 4px;" title="Kontrolle bis ${dA.toLocaleDateString('de-DE')}">K</div>
                     <div class="gantt-seg-fertigung" style="width: ${wFert}%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: white; font-weight: bold; border-radius: 4px;" title="Fertigung bis ${dL.toLocaleDateString('de-DE')}">Fertigung</div>
@@ -2037,7 +2038,7 @@ window.renderGanttChart = function() {
                     <div class="gantt-timeline-container">
                         ${todayPct >= 0 && todayPct <= 100 ? `<div class="gantt-today-line" style="left: ${todayPct}%;" title="Heute (${today.toLocaleDateString('de-DE')})"></div>` : ''}
                         ${targetPct >= 0 && targetPct <= 100 ? `<div class="gantt-target-line" style="left: ${targetPct}%;" title="Rolling Chassis Target (${target.toLocaleDateString('de-DE')})"></div>` : ''}
-                        ${dfPct >= 0 && dfPct <= 100 ? `<div class="gantt-target-line" style="left: ${dfPct}%; border-left-color: #9333ea;" title="Design Freeze (${dfDate.toLocaleDateString('de-DE')})"></div>` : ''}
+                        ${dfPct >= 0 && dfPct <= 100 ? `<div class="gantt-target-line" style="left: ${dfPct}%;" title="Design Freeze (${dfDate.toLocaleDateString('de-DE')})"></div>` : ''}
                         
                         <div class="gantt-bar-wrapper" style="left: ${startPct}%; width: ${barWidthPct}%;" title="${tooltipText}">
                             <div class="gantt-seg gantt-seg-cad" style="width: ${pCAD}%;">CAD</div>
