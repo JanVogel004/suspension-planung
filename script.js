@@ -492,7 +492,7 @@ function renderBauteile() {
                 let isTextarea = false;
                 let lowerCol = col.toLowerCase();
                 
-                if (lowerCol.includes('(datum)') || lowerCol.includes('date')) type = 'date';
+                if (lowerCol.includes('(datum)') || lowerCol.includes('date') || lowerCol.includes('deadline')) type = 'date';
                 else if (lowerCol.includes('(zahl)') || lowerCol === 'bestand') type = 'number';
                 
                 if (lowerCol.includes('(langtext)') || lowerCol.includes('notiz') || lowerCol.includes('beschreibung') || lowerCol.includes('text') || lowerCol.includes('info') || lowerCol.includes('link')) {
@@ -510,9 +510,9 @@ function renderBauteile() {
             
             if (col === 'Status') {
                 let dates = calculateDates(row);
-                html += `<td id="date-kontrolle-${index}" class="readonly" style="color:var(--warning)">${dates.kontrolle.toLocaleDateString('de-DE')}</td>`;
-                html += `<td id="date-abschick-${index}" class="readonly" style="color:var(--danger)">${dates.abschickdatum.toLocaleDateString('de-DE')}</td>`;
-                html += `<td id="date-liefer-${index}" class="readonly">${dates.lieferdatum.toLocaleDateString('de-DE')}</td>`;
+                html += `<td id="date-kontrolle-${index}" class="readonly" style="color:var(--warning)">${dates.kontrolle.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})}</td>`;
+                html += `<td id="date-abschick-${index}" class="readonly" style="color:var(--danger)">${dates.abschickdatum.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})}</td>`;
+                html += `<td id="date-liefer-${index}" class="readonly">${dates.lieferdatum.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})}</td>`;
             }
         });
         if (row['Status'] === 'Fertig montiert') {
@@ -636,7 +636,7 @@ function renderLieferanten() {
                 let isTextarea = false;
                 let lowerCol = col.toLowerCase();
                 
-                if (lowerCol.includes('(datum)') || lowerCol.includes('date')) type = 'date';
+                if (lowerCol.includes('(datum)') || lowerCol.includes('date') || lowerCol.includes('deadline')) type = 'date';
                 else if (lowerCol.includes('(zahl)') || lowerCol === 'bestand') type = 'number';
                 
                 if (lowerCol.includes('(langtext)') || lowerCol.includes('notiz') || lowerCol.includes('beschreibung') || lowerCol.includes('text') || lowerCol.includes('info') || lowerCol.includes('link') || col === 'Teile / Komponenten (ct8)') {
@@ -728,9 +728,9 @@ function updateDashboard() {
             let diffDays = Math.ceil((dK_noTime - today_noTime) / (1000 * 60 * 60 * 24));
             
             let isAlarm = (diffDays < 0);
-            let cDateStr = diffDays < 0 ? `<span style="color:var(--danger);font-weight:bold">${dKontrolle.toLocaleDateString('de-DE')} <span style="font-size:0.75rem;">(${diffDays} T)</span></span>` : 
-                           (diffDays <= 7 ? `<span style="color:var(--warning);font-weight:bold">${dKontrolle.toLocaleDateString('de-DE')} <span style="font-size:0.75rem;">(${diffDays} T)</span></span>` : 
-                           `<span>${dKontrolle.toLocaleDateString('de-DE')} <span style="font-size:0.75rem;color:var(--text-muted);">(${diffDays} T)</span></span>`);
+            let cDateStr = diffDays < 0 ? `<span style="color:var(--danger);font-weight:bold">${dKontrolle.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} <span style="font-size:0.75rem;">(${diffDays} T)</span></span>` : 
+                           (diffDays <= 7 ? `<span style="color:var(--warning);font-weight:bold">${dKontrolle.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} <span style="font-size:0.75rem;">(${diffDays} T)</span></span>` : 
+                           `<span>${dKontrolle.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} <span style="font-size:0.75rem;color:var(--text-muted);">(${diffDays} T)</span></span>`);
             let rowStyle = isAlarm ? ` style="background-color: rgba(239, 68, 68, 0.15);"` : ``;
             let nameStyle = isAlarm ? ` style="color: var(--danger);"` : ``;
 
@@ -973,7 +973,7 @@ function updateDashboard() {
             <tr>
                 <td><span style="background:var(--primary); padding:2px 6px; border-radius:4px; font-size:0.7rem; color:white;"><i class="fa-solid fa-cube"></i> ${cat}</span></td>
                 <td><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${name}</strong></a><br><span style="font-size:0.75rem; color:var(--text-muted);">${fertiger}</span></td>
-                <td style="color:${color}; font-weight:bold; white-space:nowrap;" title="Verbleibende Tage: ${diffDays}">${dA.toLocaleDateString('de-DE')} <span style="font-size:0.75rem;">(${diffDays} T)</span></td>
+                <td style="color:${color}; font-weight:bold; white-space:nowrap;" title="Verbleibende Tage: ${diffDays}">${dA.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} <span style="font-size:0.75rem;">(${diffDays} T)</span></td>
             </tr>
         `;
     });
@@ -1394,7 +1394,7 @@ function renderNormteile() {
             let isTextarea = false;
             let lowerCol = col.toLowerCase();
             
-            if (lowerCol.includes('(datum)') || lowerCol.includes('date')) type = 'date';
+            if (lowerCol.includes('(datum)') || lowerCol.includes('date') || lowerCol.includes('deadline')) type = 'date';
             else if (lowerCol.includes('(zahl)') || lowerCol === 'bestand') type = 'number';
             
             if (lowerCol.includes('(langtext)') || lowerCol.includes('notiz') || lowerCol.includes('beschreibung') || lowerCol.includes('text') || lowerCol.includes('info') || lowerCol.includes('link')) {
@@ -1910,9 +1910,9 @@ window.updateUnterbaugruppe = function(baugruppe, unterbaugruppe, col, val) {
             let dK = document.getElementById('date-kontrolle-' + idx);
             let dA = document.getElementById('date-abschick-' + idx);
             let dL = document.getElementById('date-liefer-' + idx);
-            if(dK) dK.innerHTML = dates.kontrolle < new Date() ? `<span style="color:var(--danger);font-weight:bold">${dates.kontrolle.toLocaleDateString('de-DE')} (Überfällig)</span>` : dates.kontrolle.toLocaleDateString('de-DE');
-            if(dA) dA.innerText = dates.abschickdatum.toLocaleDateString('de-DE');
-            if(dL) dL.innerText = dates.lieferdatum.toLocaleDateString('de-DE');
+            if(dK) dK.innerHTML = dates.kontrolle < new Date() ? `<span style="color:var(--danger);font-weight:bold">${dates.kontrolle.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} (Überfällig)</span>` : dates.kontrolle.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'});
+            if(dA) dA.innerText = dates.abschickdatum.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'});
+            if(dL) dL.innerText = dates.lieferdatum.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'});
         }
     });
     markDirty();
@@ -1957,7 +1957,7 @@ window.renderGanttSummary = function() {
         <thead>
             <tr>
                 <th class="gantt-left-col" style="width: 240px; min-width: 240px; max-width: 240px; background: #0f172a !important;">Kritische Bauteile (Top 20)</th>
-                <th style="width: 100%; text-align: left; padding-left: 15px; color: #cbd5e1;">Zeitstrahl (Heute <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i> <span style="color:#10b981;">Design Freeze</span> <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i> <span style="color:#10b981;">Target: ${target.toLocaleDateString('de-DE')}</span>)</th>
+                <th style="width: 100%; text-align: left; padding-left: 15px; color: #cbd5e1;">Zeitstrahl (Heute <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i> <span style="color:#10b981;">Design Freeze</span> <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i> <span style="color:#10b981;">Target: ${target.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})}</span>)</th>
             </tr>
         </thead>
         <tbody>`;
@@ -2006,12 +2006,12 @@ window.renderGanttSummary = function() {
             </td>
             <td class="gantt-time-cell" style="padding: 6px 12px !important;">
                 <div style="position: relative; width: 100%; height: 26px; background: rgba(0,0,0,0.25); border-radius: 6px; overflow: hidden; display: flex; border: 1px solid rgba(255,255,255,0.05);">
-                    ${dfPct >= 0 && dfPct <= 100 ? `<div style="position: absolute; left: ${dfPct}%; top: 0; bottom: 0; border-left: 2px dashed #10b981; z-index: 10;" title="Design Freeze (${dfDate.toLocaleDateString('de-DE')})"></div>` : ''}
-                    <div style="position: absolute; left: 100%; top: 0; bottom: 0; border-left: 2px dashed #10b981; z-index: 10; margin-left: -2px;" title="Rolling Chassis Target (${target.toLocaleDateString('de-DE')})"></div>
+                    ${dfPct >= 0 && dfPct <= 100 ? `<div style="position: absolute; left: ${dfPct}%; top: 0; bottom: 0; border-left: 2px dashed #10b981; z-index: 10;" title="Design Freeze (${dfDate.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})})"></div>` : ''}
+                    <div style="position: absolute; left: 100%; top: 0; bottom: 0; border-left: 2px dashed #10b981; z-index: 10; margin-left: -2px;" title="Rolling Chassis Target (${target.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})})"></div>
                     <div style="width: ${startCAD}%; background: transparent;"></div>
-                    <div class="gantt-seg-kontrolle" style="width: ${wCAD}%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: white; font-weight: bold; border-radius: 4px;" title="Kontrolle bis ${dA.toLocaleDateString('de-DE')}">K</div>
-                    <div class="gantt-seg-fertigung" style="width: ${wFert}%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: white; font-weight: bold; border-radius: 4px;" title="Fertigung bis ${dL.toLocaleDateString('de-DE')}">Fertigung</div>
-                    <div class="gantt-seg-assembly" style="width: ${wAss}%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: white; font-weight: bold; border-radius: 4px;" title="Montage bis ${target.toLocaleDateString('de-DE')}">Ass</div>
+                    <div class="gantt-seg-kontrolle" style="width: ${wCAD}%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: white; font-weight: bold; border-radius: 4px;" title="Kontrolle bis ${dA.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})}">K</div>
+                    <div class="gantt-seg-fertigung" style="width: ${wFert}%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: white; font-weight: bold; border-radius: 4px;" title="Fertigung bis ${dL.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})}">Fertigung</div>
+                    <div class="gantt-seg-assembly" style="width: ${wAss}%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: white; font-weight: bold; border-radius: 4px;" title="Montage bis ${target.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})}">Ass</div>
                 </div>
             </td>
         </tr>`;
@@ -2179,7 +2179,7 @@ window.renderGanttChart = function() {
                 statusBadge = `<span style="background: #475569; color: #cbd5e1; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 6px;">Ausstehend</span>`;
             }
 
-            let tooltipText = `${name} (${g} / ${ub})&#10;----------------------------&#10;🟣 Design/CAD: bis ${dK.toLocaleDateString('de-DE')}&#10;🟡 Kontrolle/Puffer: ${p["Kontrollzeit & Puffer"] || p["Kontrolle"] || 0} Tage (bis ${dA.toLocaleDateString('de-DE')})&#10;🔵 Fertigung: ${p["Fertigungsdauer"] || p["Fertigungsdauer / Lieferzeit"] || 0} Tage (bis ${dL.toLocaleDateString('de-DE')})&#10;🟢 Assembly/Montage: ${parseInt(p["Assembly Zeit"]||0)+parseInt(p["Montage Zeit"]||0)} Tage (bis ${tDatum.toLocaleDateString('de-DE')})`;
+            let tooltipText = `${name} (${g} / ${ub})&#10;----------------------------&#10;🟣 Design/CAD: bis ${dK.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})}&#10;🟡 Kontrolle/Puffer: ${p["Kontrollzeit & Puffer"] || p["Kontrolle"] || 0} Tage (bis ${dA.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})})&#10;🔵 Fertigung: ${p["Fertigungsdauer"] || p["Fertigungsdauer / Lieferzeit"] || 0} Tage (bis ${dL.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})})&#10;🟢 Assembly/Montage: ${parseInt(p["Assembly Zeit"]||0)+parseInt(p["Montage Zeit"]||0)} Tage (bis ${tDatum.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})})`;
 
             let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
             
@@ -2211,9 +2211,9 @@ window.renderGanttChart = function() {
                 </td>
                 <td colspan="${cols.length}" class="gantt-time-cell">
                     <div class="gantt-timeline-container">
-                        ${todayPct >= 0 && todayPct <= 100 ? `<div class="gantt-today-line" style="left: ${todayPct}%;" title="Heute (${today.toLocaleDateString('de-DE')})"></div>` : ''}
-                        ${targetPct >= 0 && targetPct <= 100 ? `<div class="gantt-target-line" style="left: ${targetPct}%;" title="Rolling Chassis Target (${target.toLocaleDateString('de-DE')})">${isFirstRow ? `<div style="position: absolute; top: -20px; left: 4px; font-size: 0.65rem; color: #10b981; font-weight: bold; white-space: nowrap; z-index: 20;">Rolling Chassis</div>` : ''}</div>` : ''}
-                        ${dfPct >= 0 && dfPct <= 100 ? `<div class="gantt-target-line" style="left: ${dfPct}%;" title="Design Freeze (${dfDate.toLocaleDateString('de-DE')})">${isFirstRow ? `<div style="position: absolute; top: -20px; left: 4px; font-size: 0.65rem; color: #10b981; font-weight: bold; white-space: nowrap; z-index: 20;">Design Freeze</div>` : ''}</div>` : ''}
+                        ${todayPct >= 0 && todayPct <= 100 ? `<div class="gantt-today-line" style="left: ${todayPct}%;" title="Heute (${today.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})})"></div>` : ''}
+                        ${targetPct >= 0 && targetPct <= 100 ? `<div class="gantt-target-line" style="left: ${targetPct}%;" title="Rolling Chassis Target (${target.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})})">${isFirstRow ? `<div style="position: absolute; top: -20px; left: 4px; font-size: 0.65rem; color: #10b981; font-weight: bold; white-space: nowrap; z-index: 20;">Rolling Chassis</div>` : ''}</div>` : ''}
+                        ${dfPct >= 0 && dfPct <= 100 ? `<div class="gantt-target-line" style="left: ${dfPct}%;" title="Design Freeze (${dfDate.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})})">${isFirstRow ? `<div style="position: absolute; top: -20px; left: 4px; font-size: 0.65rem; color: #10b981; font-weight: bold; white-space: nowrap; z-index: 20;">Design Freeze</div>` : ''}</div>` : ''}
                         
                         <div class="gantt-bar-wrapper" style="left: ${startPct}%; width: ${barWidthPct}%;" title="${tooltipText}">
                             <div class="gantt-seg gantt-seg-cad" style="width: ${pCAD}%;">CAD</div>
