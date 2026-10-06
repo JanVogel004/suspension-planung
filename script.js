@@ -137,6 +137,21 @@ async function loadData() {
         if (!Array.isArray(normteileData)) throw new Error('Normteile: Ungültige Antwort');
         normteileColumns = normteileData.length > 0 ? Object.keys(normteileData[0]).filter(k => k !== 'id') : ['Normteil Name', 'Kategorie', 'Beschreibung / Norm', 'Shop Link', 'Bestand', 'Geprüft am (Datum)', 'Bestellte Stückzahl (Zahl)', 'Bestellt am (Datum)', 'Angekommen (Check)'];
         
+        let applySort = (type, arr) => {
+            let pref = null;
+            try { pref = JSON.parse(localStorage.getItem('colOrder_' + type)); } catch(e){}
+            if (pref && Array.isArray(pref)) {
+                arr.sort((a,b) => {
+                    let iA = pref.indexOf(a); let iB = pref.indexOf(b);
+                    if(iA === -1) iA = 999; if(iB === -1) iB = 999;
+                    return iA - iB;
+                });
+            }
+        };
+        applySort('bauteile', bauteileColumns);
+        applySort('lieferanten', lieferantenColumns);
+        applySort('normteile', normteileColumns);
+        
         if(!bauteileColumns.includes('Unterbaugruppe')) {
             let index = bauteileColumns.indexOf('Baugruppe');
             if (index !== -1) {
@@ -270,9 +285,16 @@ function renderBauteile() {
         let lc = col.toLowerCase();
         if (lc.includes('assembly') || lc.includes('montage') || lc === 'unterbaugruppen-status') return;
         let sClass = col === 'Bauteil-Name' ? ' class="sticky-col-main"' : '';
+        let isFirst = col === 'Bauteil-Name';
         headHtml += `<th${sClass}>
-            ${displayCol(col)}
-            ${!isStandardBCol(col) ? ` <button class="delete-btn" style="padding:2px; font-size:10px" onclick="delBauteilColumn('${col}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                ${!isFirst ? `<button style="background:none;border:none;color:inherit;cursor:pointer;opacity:0.4;padding:0 4px;" onclick="moveCol('bauteile', '${col}', -1)"><i class="fa-solid fa-caret-left"></i></button>` : '<span></span>'}
+                <span style="flex-grow:1; text-align:center;">${displayCol(col)}</span>
+                <div style="white-space:nowrap;">
+                    ${!isFirst ? `<button style="background:none;border:none;color:inherit;cursor:pointer;opacity:0.4;padding:0 4px;" onclick="moveCol('bauteile', '${col}', 1)"><i class="fa-solid fa-caret-right"></i></button>` : ''}
+                    ${!isStandardBCol(col) ? `<button class="delete-btn" style="padding:2px; font-size:10px; margin-left:4px;" onclick="delBauteilColumn('${col}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
+                </div>
+            </div>
         </th>`;
         if (lc.includes('kontroll')) {
             headHtml += `<th>Fertig zur Kontrolle (CAD)</th>`;
@@ -476,9 +498,16 @@ function renderLieferanten() {
     lieferantenColumns.forEach(col => {
         if (col === 'Typ') return;
         let sStyle = col === 'Teile / Komponenten (ct8)' ? ' style="min-width: 250px;"' : '';
+        let isFirst = col === 'Fertigungsverfahren';
         headHtml += `<th${sStyle}>
-            ${displayCol(col)}
-            ${!isStandardLCol(col) ? ` <button class="delete-btn" style="padding:2px; font-size:10px" onclick="delLieferantColumn('${col}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                ${!isFirst ? `<button style="background:none;border:none;color:inherit;cursor:pointer;opacity:0.4;padding:0 4px;" onclick="moveCol('lieferanten', '${col}', -1)"><i class="fa-solid fa-caret-left"></i></button>` : '<span></span>'}
+                <span style="flex-grow:1; text-align:center;">${displayCol(col)}</span>
+                <div style="white-space:nowrap;">
+                    ${!isFirst ? `<button style="background:none;border:none;color:inherit;cursor:pointer;opacity:0.4;padding:0 4px;" onclick="moveCol('lieferanten', '${col}', 1)"><i class="fa-solid fa-caret-right"></i></button>` : ''}
+                    ${!isStandardLCol(col) ? `<button class="delete-btn" style="padding:2px; font-size:10px; margin-left:4px;" onclick="delLieferantColumn('${col}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
+                </div>
+            </div>
         </th>`;
         if (col === 'Teile / Komponenten (ct8)') {
             headHtml += `<th style="min-width: 250px;">Aktuelle Zuordnung der Teile</th>`;
@@ -994,6 +1023,27 @@ function delBauteilColumn(colName) {
     }
 }
 
+function moveCol(type, colName, dir) {
+    let cols = type === 'bauteile' ? bauteileColumns : (type === 'lieferanten' ? lieferantenColumns : normteileColumns);
+    let idx = cols.indexOf(colName);
+    if (idx <= 0) return; // Cannot move the first column
+    
+    let newIdx = idx + dir;
+    if (newIdx <= 0) return; // Cannot move into the first column's spot
+    
+    if (newIdx > 0 && newIdx < cols.length) {
+        let temp = cols[idx];
+        cols[idx] = cols[newIdx];
+        cols[newIdx] = temp;
+        
+        localStorage.setItem('colOrder_' + type, JSON.stringify(cols));
+        
+        if (type === 'bauteile') renderBauteile();
+        else if (type === 'lieferanten') renderLieferanten();
+        else renderNormteile();
+    }
+}
+
 function addLieferantColumn() { openAddColumnModal('lieferanten'); }
 
 function delLieferantColumn(colName) {
@@ -1205,9 +1255,16 @@ function renderNormteile() {
         if (col === 'Bestellte Stückzahl (Zahl)') {
             headHtml += `<th>Benötigt für (Gesamtanzahl)</th>`;
         }
+        let isFirst = col === 'Normteil Name';
         headHtml += `<th${sClass}>
-            ${displayCol(col)}
-            ${!isStandardNCol(col) ? ` <button class="delete-btn" style="padding:2px; font-size:10px" onclick="delNormteilColumn('${col}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                ${!isFirst ? `<button style="background:none;border:none;color:inherit;cursor:pointer;opacity:0.4;padding:0 4px;" onclick="moveCol('normteile', '${col}', -1)"><i class="fa-solid fa-caret-left"></i></button>` : '<span></span>'}
+                <span style="flex-grow:1; text-align:center;">${displayCol(col)}</span>
+                <div style="white-space:nowrap;">
+                    ${!isFirst ? `<button style="background:none;border:none;color:inherit;cursor:pointer;opacity:0.4;padding:0 4px;" onclick="moveCol('normteile', '${col}', 1)"><i class="fa-solid fa-caret-right"></i></button>` : ''}
+                    ${!isStandardNCol(col) ? `<button class="delete-btn" style="padding:2px; font-size:10px; margin-left:4px;" onclick="delNormteilColumn('${col}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
+                </div>
+            </div>
         </th>`;
     });
     if (!normteileColumns.includes('Bestellte Stückzahl (Zahl)')) {
