@@ -851,21 +851,30 @@ function updateDashboard() {
     // 6. Zu bestellen Panel
     let toOrderHtml = '';
     
-    // A) Bauteile
-    bauteileData.forEach((b, i) => {
-        if (b["Status"] === "Zu bestellen") {
-            let cat = b["Baugruppe"] || "Bauteil";
-            let name = b["Bauteil-Name"] || "Unbenannt";
-            let fertiger = b["Fertiger / Firma"] || "Kein Fertiger";
-            let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-            
-            toOrderHtml += `
-                <tr>
-                    <td><span style="background:var(--primary); padding:2px 6px; border-radius:4px; font-size:0.7rem; color:white;"><i class="fa-solid fa-cube"></i> ${cat}</span></td>
-                    <td><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${name}</strong></a><br><span style="font-size:0.75rem; color:var(--text-muted);">${fertiger}</span></td>
-                </tr>
-            `;
-        }
+    let toOrderItems = bauteileData.filter(b => b["Status"] === "Zu bestellen").map(b => {
+        let dates = calculateDates(b);
+        let dA = dates.abschickdatum;
+        let diffDays = Math.ceil((dA - today) / (1000 * 60 * 60 * 24));
+        return { b, dA, diffDays };
+    }).sort((a, b) => a.diffDays - b.diffDays);
+
+    toOrderItems.forEach(item => {
+        let b = item.b;
+        let cat = b["Baugruppe"] || "Bauteil";
+        let name = b["Bauteil-Name"] || "Unbenannt";
+        let fertiger = b["Fertiger / Firma"] || "Kein Fertiger";
+        let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        let dA = item.dA;
+        let diffDays = item.diffDays;
+        let color = diffDays < 0 ? 'var(--danger)' : (diffDays <= 7 ? 'var(--warning)' : 'var(--success)');
+        
+        toOrderHtml += `
+            <tr>
+                <td><span style="background:var(--primary); padding:2px 6px; border-radius:4px; font-size:0.7rem; color:white;"><i class="fa-solid fa-cube"></i> ${cat}</span></td>
+                <td><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${name}</strong></a><br><span style="font-size:0.75rem; color:var(--text-muted);">${fertiger}</span></td>
+                <td style="color:${color}; font-weight:bold; white-space:nowrap;" title="Verbleibende Tage: ${diffDays}">${dA.toLocaleDateString('de-DE')} <span style="font-size:0.75rem;">(${diffDays} T)</span></td>
+            </tr>
+        `;
     });
 
     // B) Normteile
@@ -902,7 +911,7 @@ function updateDashboard() {
     if (missingNormteileCount > 0) {
         toOrderHtml += `
             <tr>
-                <td colspan="2">
+                <td colspan="3">
                     <a href="javascript:void(0)" onclick="switchTab('normteile'); setTimeout(() => { let i = document.getElementById('normteileSearch'); if(i) { i.value='#missing'; filterNormteile(); } }, 100);" style="color:var(--info); text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;" title="Normteile-Reiter öffnen">
                         <strong><i class="fa-solid fa-list-check"></i> ${missingNormteileCount} verschiedene Normteile fehlen</strong>
                     </a>
