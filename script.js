@@ -55,9 +55,17 @@ let normteileColumns = [];
 // Load target date from local storage or default
 let savedDate = localStorage.getItem('suspension_target_date') || '2026-12-01';
 let targetDate = new Date(savedDate);
+if (isNaN(targetDate.getTime())) {
+    targetDate = new Date('2026-12-01');
+    localStorage.setItem('suspension_target_date', '2026-12-01');
+}
 
 let savedDFDate = localStorage.getItem('suspension_df_date') || '2025-12-24';
 let dfDateGlobal = new Date(savedDFDate);
+if (isNaN(dfDateGlobal.getTime())) {
+    dfDateGlobal = new Date('2025-12-24');
+    localStorage.setItem('suspension_df_date', '2025-12-24');
+}
 
 // Set initial value in HTML
 document.addEventListener("DOMContentLoaded", () => {
@@ -70,22 +78,28 @@ document.addEventListener("DOMContentLoaded", () => {
 function updateTargetDate(newDateStr) {
     pushHistory();
     if (!newDateStr) return;
-    targetDate = new Date(newDateStr);
-    markDirty();
-    localStorage.setItem('suspension_target_date', newDateStr);
-    renderBauteile();
-    updateDashboard();
-    if(typeof renderGanttChart === 'function') renderGanttChart();
+    let d = new Date(newDateStr);
+    if (!isNaN(d.getTime())) {
+        targetDate = d;
+        markDirty();
+        localStorage.setItem('suspension_target_date', newDateStr);
+        renderBauteile();
+        updateDashboard();
+        if(typeof renderGanttChart === 'function') renderGanttChart();
+    }
 }
 
 function updateDesignFreezeDate(newDateStr) {
     pushHistory();
     if (!newDateStr) return;
-    dfDateGlobal = new Date(newDateStr);
-    markDirty();
-    localStorage.setItem('suspension_df_date', newDateStr);
-    updateDashboard(); // re-renders mini-gantt
-    if(typeof renderGanttChart === 'function') renderGanttChart();
+    let d = new Date(newDateStr);
+    if (!isNaN(d.getTime())) {
+        dfDateGlobal = d;
+        markDirty();
+        localStorage.setItem('suspension_df_date', newDateStr);
+        updateDashboard(); // re-renders mini-gantt
+        if(typeof renderGanttChart === 'function') renderGanttChart();
+    }
 }
 
 // Tab Switching
@@ -242,7 +256,7 @@ function calculateDates(row) {
     if (explicitDeadlineKey && row[explicitDeadlineKey]) {
         let val = row[explicitDeadlineKey];
         // Handle potential DD.MM.YYYY format
-        if (val.includes('.')) {
+        if (typeof val === 'string' && val.includes('.')) {
             let parts = val.split('.');
             if (parts.length === 3) val = `${parts[2]}-${parts[1]}-${parts[0]}`;
         }
