@@ -200,10 +200,29 @@ async function saveData() {
         saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Speichern';
         return;
     }
-        let cleanB = bauteileData.map(r => { let o={}; bauteileColumns.forEach(c => o[c]=r[c]||'');  return o; });
+        let cleanB = bauteileData.map(r => { 
+            let o={}; 
+            bauteileColumns.forEach(c => {
+                let val = r[c] === undefined ? '' : r[c];
+                // If it's a date column and empty, we must NOT send an empty string to Supabase
+                if (val === '' && (c.toLowerCase().includes('(datum)') || c.toLowerCase().includes('date') || c.toLowerCase().includes('deadline'))) {
+                    o[c] = null;
+                } else {
+                    o[c] = val;
+                }
+            });  
+            return o; 
+        });
+
+        // SAFE SYNC PATTERN: Test insert on a temporary row? No, PostgREST doesn't support transactions.
+        // We will do a full wipe and replace, but we now map empty dates to `null` to prevent crashes.
+        // Ideally, this should be refactored to an UPSERT based on IDs in the future to avoid data loss.
         await fetch(`${SUPABASE_URL}/bauteile?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders(), cache: 'no-store' });
         let r1 = await fetch(`${SUPABASE_URL}/bauteile`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(cleanB) });
-        if (!r1.ok) throw new Error("Fehler beim Speichern der Bauteile");
+        if (!r1.ok) {
+            const err = await r1.text();
+            throw new Error("Fehler beim Speichern der Bauteile: " + err);
+        }
 
         let cleanL = lieferantenData.map(r => { let o={}; lieferantenColumns.forEach(c => o[c]=r[c]||'');  return o; });
         await fetch(`${SUPABASE_URL}/lieferanten?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders(), cache: 'no-store' });
