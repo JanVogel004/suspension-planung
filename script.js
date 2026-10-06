@@ -648,8 +648,16 @@ function updateDashboard() {
 
         if (designCount < 15 || within4Weeks) {
             designCount++;
-            let isAlarm = (dKontrolle < today);
-            let cDateStr = dKontrolle < today ? `<span style="color:var(--danger);font-weight:bold">${dKontrolle.toLocaleDateString('de-DE')} (Überfällig)</span>` : dKontrolle.toLocaleDateString('de-DE');
+            let dK_noTime = new Date(dKontrolle);
+            dK_noTime.setHours(0,0,0,0);
+            let today_noTime = new Date(today);
+            today_noTime.setHours(0,0,0,0);
+            let diffDays = Math.ceil((dK_noTime - today_noTime) / (1000 * 60 * 60 * 24));
+            
+            let isAlarm = (diffDays < 0);
+            let cDateStr = diffDays < 0 ? `<span style="color:var(--danger);font-weight:bold">${dKontrolle.toLocaleDateString('de-DE')} <span style="font-size:0.75rem;">(${diffDays} T)</span></span>` : 
+                           (diffDays <= 7 ? `<span style="color:var(--warning);font-weight:bold">${dKontrolle.toLocaleDateString('de-DE')} <span style="font-size:0.75rem;">(${diffDays} T)</span></span>` : 
+                           `<span>${dKontrolle.toLocaleDateString('de-DE')} <span style="font-size:0.75rem;color:var(--text-muted);">(${diffDays} T)</span></span>`);
             let rowStyle = isAlarm ? ` style="background-color: rgba(239, 68, 68, 0.15);"` : ``;
             let nameStyle = isAlarm ? ` style="color: var(--danger);"` : ``;
 
