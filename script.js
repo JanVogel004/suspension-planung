@@ -219,19 +219,39 @@ function calculateDates(row) {
     let fertigung = getVal('fertigung');
     let kontrolle = getVal('kontroll');
     
-    // Lieferdatum (when it must arrive from manufacturer)
-    let dLiefer = new Date(targetDate);
-    dLiefer.setDate(dLiefer.getDate() - assembly - montage);
+    // Check for explicit custom deadline
+    let dLiefer, dAbschick, dKontrolle, dTarget;
+    let explicitDeadlineKey = keys.find(k => k.toLowerCase().includes('fixe deadline') || k.toLowerCase().includes('bestelldatum') || k.toLowerCase().includes('wunsch-deadline'));
     
-    // Abschickdatum (when CAD must be sent to manufacturer)
-    let dAbschick = new Date(dLiefer);
-    dAbschick.setDate(dAbschick.getDate() - fertigung);
+    if (explicitDeadlineKey && row[explicitDeadlineKey]) {
+        // Assume user provided the explicit "Spät. Abschickdatum"
+        dAbschick = new Date(row[explicitDeadlineKey]);
+        
+        // Forward calculation
+        dLiefer = new Date(dAbschick);
+        dLiefer.setDate(dLiefer.getDate() + fertigung);
+        
+        dTarget = new Date(dLiefer);
+        dTarget.setDate(dTarget.getDate() + assembly + montage);
+        
+        // Backward calculation
+        dKontrolle = new Date(dAbschick);
+        dKontrolle.setDate(dKontrolle.getDate() - kontrolle);
+    } else {
+        // Normal backward calculation from global target date
+        dTarget = new Date(targetDate);
+        
+        dLiefer = new Date(dTarget);
+        dLiefer.setDate(dLiefer.getDate() - assembly - montage);
+        
+        dAbschick = new Date(dLiefer);
+        dAbschick.setDate(dAbschick.getDate() - fertigung);
+        
+        dKontrolle = new Date(dAbschick);
+        dKontrolle.setDate(dKontrolle.getDate() - kontrolle);
+    }
     
-    // Fertig zur Kontrolle (when CAD design must be finished for checking)
-    let dKontrolle = new Date(dAbschick);
-    dKontrolle.setDate(dKontrolle.getDate() - kontrolle);
-    
-    return { lieferdatum: dLiefer, abschickdatum: dAbschick, kontrolle: dKontrolle };
+    return { lieferdatum: dLiefer, abschickdatum: dAbschick, kontrolle: dKontrolle, targetDatum: dTarget };
 }
 
 // Strip type suffixes from column names for display
@@ -1929,6 +1949,10 @@ window.renderGanttChart = function() {
         let cadStart = new Date(dates.kontrolle);
         cadStart.setDate(cadStart.getDate() - 14);
         if (cadStart < minDate) minDate = new Date(cadStart);
+        if (dates.targetDatum && dates.targetDatum > maxDate) {
+            maxDate = new Date(dates.targetDatum);
+            maxDate.setDate(maxDate.getDate() + 7);
+        }
     });
 
     // Align minDate to Monday
@@ -2025,16 +2049,17 @@ window.renderGanttChart = function() {
             cadStart.setDate(cadStart.getDate() - 14); // estimate 2 weeks CAD before kontrolle
             
             let startPct = Math.max(0, Math.min(100, ((cadStart - minDate) / totalMs) * 100));
-            let endPct = Math.max(0, Math.min(100, ((target - minDate) / totalMs) * 100));
+            let tDatum = dates.targetDatum;
+            let endPct = Math.max(0, Math.min(100, ((tDatum - minDate) / totalMs) * 100));
             let barWidthPct = Math.max(2, endPct - startPct);
             
-            let spanMs = target - cadStart;
+            let spanMs = tDatum - cadStart;
             if (spanMs <= 0) spanMs = 1;
             
             let pCAD = Math.max(0, Math.min(100, ((dK - cadStart) / spanMs) * 100));
             let pKont = Math.max(0, Math.min(100, ((dA - dK) / spanMs) * 100));
             let pFert = Math.max(0, Math.min(100, ((dL - dA) / spanMs) * 100));
-            let pAss = Math.max(0, Math.min(100, ((target - dL) / spanMs) * 100));
+            let pAss = Math.max(0, Math.min(100, ((tDatum - dL) / spanMs) * 100));
 
             let statusBadge = '';
             if (status === 'Assembled' || status === 'Fertig montiert') {
@@ -2045,7 +2070,7 @@ window.renderGanttChart = function() {
                 statusBadge = `<span style="background: #475569; color: #cbd5e1; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 6px;">Ausstehend</span>`;
             }
 
-            let tooltipText = `${name} (${g} / ${ub})&#10;----------------------------&#10;🟣 Design/CAD: bis ${dK.toLocaleDateString('de-DE')}&#10;🟡 Kontrolle/Puffer: ${p["Kontrollzeit & Puffer"] || p["Kontrolle"] || 0} Tage (bis ${dA.toLocaleDateString('de-DE')})&#10;🔵 Fertigung: ${p["Fertigungsdauer"] || p["Fertigungsdauer / Lieferzeit"] || 0} Tage (bis ${dL.toLocaleDateString('de-DE')})&#10;🟢 Assembly/Montage: ${parseInt(p["Assembly Zeit"]||0)+parseInt(p["Montage Zeit"]||0)} Tage (bis ${target.toLocaleDateString('de-DE')})`;
+            let tooltipText = `${name} (${g} / ${ub})&#10;----------------------------&#10;🟣 Design/CAD: bis ${dK.toLocaleDateString('de-DE')}&#10;🟡 Kontrolle/Puffer: ${p["Kontrollzeit & Puffer"] || p["Kontrolle"] || 0} Tage (bis ${dA.toLocaleDateString('de-DE')})&#10;🔵 Fertigung: ${p["Fertigungsdauer"] || p["Fertigungsdauer / Lieferzeit"] || 0} Tage (bis ${dL.toLocaleDateString('de-DE')})&#10;🟢 Assembly/Montage: ${parseInt(p["Assembly Zeit"]||0)+parseInt(p["Montage Zeit"]||0)} Tage (bis ${tDatum.toLocaleDateString('de-DE')})`;
 
             let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
             
@@ -2057,7 +2082,7 @@ window.renderGanttChart = function() {
             if (['Nicht begonnen', 'Designing', 'Fertigungszeichnung'].includes(status) && todayNoTime > dK) isBehind = true;
             else if (['Kontrolle', 'Zu bestellen'].includes(status) && todayNoTime > dA) isBehind = true;
             else if (['In Fertigung', 'In Lieferung'].includes(status) && todayNoTime > dL) isBehind = true;
-            else if (['Im Lager', 'Assembled'].includes(status) && todayNoTime > target) isBehind = true;
+            else if (['Im Lager', 'Assembled'].includes(status) && todayNoTime > tDatum) isBehind = true;
 
             if (status === 'Fertig montiert') {
                 trStyle = 'opacity: 0.4;';
