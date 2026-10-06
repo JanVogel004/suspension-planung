@@ -296,7 +296,7 @@ function renderBauteile() {
                 </div>
             </div>
         </th>`;
-        if (lc.includes('kontroll')) {
+        if (col === 'Status') {
             headHtml += `<th>Fertig zur Kontrolle (CAD)</th>`;
             headHtml += `<th>Spät. Abschickdatum</th>`;
             headHtml += `<th>Spät. Lieferdatum</th>`;
@@ -464,7 +464,7 @@ function renderBauteile() {
                 }
             }
             
-            if (col.toLowerCase().includes('kontroll')) {
+            if (col === 'Status') {
                 let dates = calculateDates(row);
                 html += `<td id="date-kontrolle-${index}" class="readonly" style="color:var(--warning)">${dates.kontrolle.toLocaleDateString('de-DE')}</td>`;
                 html += `<td id="date-abschick-${index}" class="readonly" style="color:var(--danger)">${dates.abschickdatum.toLocaleDateString('de-DE')}</td>`;
