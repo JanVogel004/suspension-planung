@@ -236,23 +236,34 @@ function calculateDates(row) {
     
     // Check for explicit custom deadline
     let dLiefer, dAbschick, dKontrolle, dTarget;
-    let explicitDeadlineKey = keys.find(k => k.toLowerCase().includes('fixe deadline') || k.toLowerCase().includes('bestelldatum') || k.toLowerCase().includes('wunsch-deadline'));
+    let explicitDeadlineKey = keys.find(k => k.toLowerCase().includes('fixe deadline') || k.toLowerCase().includes('bestelldatum') || k.toLowerCase().includes('wunsch-deadline') || k.toLowerCase().includes('deadline'));
     
+    let validExplicitDate = false;
     if (explicitDeadlineKey && row[explicitDeadlineKey]) {
-        // Assume user provided the explicit "Spät. Abschickdatum"
-        dAbschick = new Date(row[explicitDeadlineKey]);
-        
-        // Forward calculation
-        dLiefer = new Date(dAbschick);
-        dLiefer.setDate(dLiefer.getDate() + fertigung);
-        
-        dTarget = new Date(dLiefer);
-        dTarget.setDate(dTarget.getDate() + assembly + montage);
-        
-        // Backward calculation
-        dKontrolle = new Date(dAbschick);
-        dKontrolle.setDate(dKontrolle.getDate() - kontrolle);
-    } else {
+        let val = row[explicitDeadlineKey];
+        // Handle potential DD.MM.YYYY format
+        if (val.includes('.')) {
+            let parts = val.split('.');
+            if (parts.length === 3) val = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        dAbschick = new Date(val);
+        if (!isNaN(dAbschick.getTime())) {
+            validExplicitDate = true;
+            
+            // Forward calculation
+            dLiefer = new Date(dAbschick);
+            dLiefer.setDate(dLiefer.getDate() + fertigung);
+            
+            dTarget = new Date(dLiefer);
+            dTarget.setDate(dTarget.getDate() + assembly + montage);
+            
+            // Backward calculation
+            dKontrolle = new Date(dAbschick);
+            dKontrolle.setDate(dKontrolle.getDate() - kontrolle);
+        }
+    }
+    
+    if (!validExplicitDate) {
         // Normal backward calculation from global target date
         dTarget = new Date(targetDate);
         
