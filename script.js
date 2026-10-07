@@ -317,6 +317,27 @@ function calculateDates(row) {
 function displayCol(col) {
     return col.replace(/\s*\((langtext|datum|zahl|check)\)\s*/gi, '').trim();
 }
+function partialUpdateBauteile(index) {
+    let row = bauteileData[index];
+    if (!row) return;
+    
+    // Recalculate dates if this was a date-affecting change
+    let dates = calculateDates(row);
+    
+    // Update calculated date cells if they exist
+    let kCell = document.getElementById(`date-kontrolle-${index}`);
+    if (kCell) kCell.innerHTML = dates.kontrolle.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'});
+    
+    let aCell = document.getElementById(`date-abschick-${index}`);
+    if (aCell) aCell.innerHTML = dates.abschickdatum.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'});
+    
+    let lCell = document.getElementById(`date-liefer-${index}`);
+    if (lCell) lCell.innerHTML = dates.lieferdatum.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'});
+
+    // Update dashboard and gantt chart since they don't disrupt user focus
+    updateDashboard();
+    if(typeof renderGanttChart === 'function') renderGanttChart();
+}
 
 // Rendering
 function renderBauteile() {
@@ -474,19 +495,19 @@ function renderBauteile() {
                     <option value="Fertig montiert" ${val==='Fertig montiert'?'selected':''}>Fertig montiert</option>
                 </select></td>`;
             } else if (col.toLowerCase().includes('assembly') || col.toLowerCase().includes('montage') || col.toLowerCase().includes('fertigung') || col.toLowerCase().includes('kontroll')) {
-                html += `<td><input type="number" value="${val}" onchange="updateB(${index}, '${col}', this.value); renderBauteile();"></td>`;
+                html += `<td><input type="number" value="${val}" onchange="updateB(${index}, '${col}', this.value); partialUpdateBauteile(${index});"></td>`;
             } else if (col === 'Benötigte Normteile') {
                 let count = 0;
                 try { count = JSON.parse(val || '[]').length; } catch(e){}
                 html += `<td><button class="add-btn" onclick="openModal(${index})" style="width:100%; white-space:nowrap;"><i class="fa-solid fa-nut"></i> ${count} Typen</button></td>`;
             } else if (col === 'Baugruppe') {
-                html += `<td><input type="text" list="baugruppenList" value="${val}" onchange="updateB(${index}, '${col}', this.value); renderBauteile();"></td>`;
+                html += `<td><input type="text" list="baugruppenList" value="${val}" onchange="updateB(${index}, '${col}', this.value); partialUpdateBauteile(${index});"></td>`;
             } else if (col === 'Unterbaugruppe') {
                 let mw = 'min-width: 150px;';
-                html += `<td><input type="text" list="unterbaugruppenList" style="${mw}" value="${val}" onfocus="updateSubGroupSuggestionsForTable(${index})" onchange="updateB(${index}, '${col}', this.value); renderBauteile();"></td>`;
+                html += `<td><input type="text" list="unterbaugruppenList" style="${mw}" value="${val}" onfocus="updateSubGroupSuggestionsForTable(${index})" onchange="updateB(${index}, '${col}', this.value); partialUpdateBauteile(${index});"></td>`;
             } else if (col.toLowerCase().includes('(check)')) {
                 let isChecked = val === 'true' || val === true || val === 'Ja' || val === '1';
-                html += `<td style="text-align:center;"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="updateB(${index}, '${col}', this.checked ? 'true' : 'false'); renderBauteile();" style="width:20px; height:20px; cursor:pointer;"></td>`;
+                html += `<td style="text-align:center;"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="updateB(${index}, '${col}', this.checked ? 'true' : 'false'); partialUpdateBauteile(${index});" style="width:20px; height:20px; cursor:pointer;"></td>`;
             } else {
                 let type = 'text';
                 let isTextarea = false;
@@ -500,11 +521,11 @@ function renderBauteile() {
                 }
 
                 if (isTextarea) {
-                    html += `<td><textarea rows="1" onchange="updateB(${index}, '${col}', this.value)" ondblclick="openTextModal('bauteile', ${index}, '${col}')">${val}</textarea></td>`;
+                    html += `<td><textarea rows="1" onchange="updateB(${index}, '${col}', this.value); partialUpdateBauteile(${index});" ondblclick="openTextModal('bauteile', ${index}, '${col}')">${val}</textarea></td>`;
                 } else {
                     let mw = col === 'Bauteil-Name' ? 'min-width: 250px;' : '';
                     let sClass = col === 'Bauteil-Name' ? ' class="sticky-col-main"' : '';
-                    html += `<td${sClass}><input type="${type}" style="${mw}" value="${val}" onchange="updateB(${index}, '${col}', this.value)" ondblclick="if(this.type==='text') openTextModal('bauteile', ${index}, '${col}')"></td>`;
+                    html += `<td${sClass}><input type="${type}" style="${mw}" value="${val}" onchange="updateB(${index}, '${col}', this.value); partialUpdateBauteile(${index});" ondblclick="if(this.type==='text') openTextModal('bauteile', ${index}, '${col}')"></td>`;
                 }
             }
             
