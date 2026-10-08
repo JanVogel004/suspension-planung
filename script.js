@@ -1993,7 +1993,7 @@ window.renderGanttSummary = function() {
         let startCAD = Math.max(0, Math.min(100, ((dK - today) / totalSpan) * 100));
         let endCAD = Math.max(0, Math.min(100, ((dA - today) / totalSpan) * 100));
         let endFert = Math.max(0, Math.min(100, ((dL - today) / totalSpan) * 100));
-        let endAss = Math.max(0, Math.min(100, ((target - today) / totalSpan) * 100));
+        let endAss = Math.max(0, Math.min(100, ((p.dates.targetDatum - today) / totalSpan) * 100));
         
         let wCAD = Math.max(2, endCAD - startCAD);
         let wFert = Math.max(2, endFert - endCAD);
