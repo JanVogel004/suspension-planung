@@ -558,6 +558,7 @@ function renderBauteile() {
             if (diffDays < 0) isCrit = true;
         }
         if (isCrit) tr.setAttribute('data-critical', 'true');
+        tr.setAttribute('data-status', s);
 
         if (row['Status'] === 'Fertig montiert') {
             tr.style.opacity = '0.4';
@@ -734,10 +735,14 @@ function updateDashboard() {
         if (['Assembled', 'Fertig montiert'].includes(s)) cClass = 'status-erl'; 
         else if (['In Fertigung', 'In Lieferung', 'Im Lager'].includes(s)) cClass = 'status-fert'; 
 
+        let escapedStatus = s.replace(/'/g, "\\'");
         statHtml += `
-            <div class="status-item ${cClass}">
+            <div class="status-item ${cClass}" onclick="openStatusModal('${escapedStatus}')" title="Klicken, um ${count} Bauteile in den Kategorien anzuzeigen">
                 <span>${s}</span>
-                <strong>${count}</strong>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <strong>${count}</strong>
+                    <i class="fa-solid fa-chevron-right" style="font-size:0.7rem; opacity:0.4;"></i>
+                </div>
             </div>
         `;
     });
@@ -1799,6 +1804,139 @@ window.jumpToBauteil = function(name) {
         filterBauteile();
     }
 };
+
+window.filterByStatus = function(status) {
+    switchTab('planung');
+    let searchInput = document.getElementById('bauteileSearch');
+    if (searchInput) {
+        searchInput.value = `#status:${status}`;
+        filterBauteile();
+    }
+};
+
+window.openStatusModal = function(status) {
+    let modal = document.getElementById('statusModal');
+    let titleEl = document.getElementById('statusModalTitle');
+    let subtitleEl = document.getElementById('statusModalSubtitle');
+    let bodyEl = document.getElementById('statusModalBody');
+    let filterBtn = document.getElementById('statusModalFilterBtn');
+    if (!modal || !bodyEl) return;
+
+    let matching = bauteileData.filter(b => (b["Status"] || 'Nicht begonnen') === status);
+    
+    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Status: <strong>${status}</strong>`;
+    if (subtitleEl) subtitleEl.innerHTML = `${matching.length} Bauteil${matching.length === 1 ? '' : 'e'} mit Status "${status}"`;
+    
+    if (filterBtn) {
+        filterBtn.onclick = function() {
+            closeStatusModal();
+            filterByStatus(status);
+        };
+        filterBtn.style.display = matching.length > 0 ? 'inline-flex' : 'none';
+        filterBtn.innerHTML = `<i class="fa-solid fa-table-list"></i> In Tabelle filtern (${matching.length})`;
+    }
+
+    if (matching.length === 0) {
+        bodyEl.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                <i class="fa-solid fa-folder-open" style="font-size: 2.5rem; opacity: 0.3; margin-bottom: 12px; display: block;"></i>
+                Keine Bauteile mit dem Status "<strong>${status}</strong>" vorhanden.
+            </div>
+        `;
+        modal.classList.add('show');
+        return;
+    }
+
+    // Group matching components by Baugruppe
+    let grouped = {};
+    matching.forEach(b => {
+        let bg = b["Baugruppe"] || 'Sonstiges';
+        if (!grouped[bg]) grouped[bg] = [];
+        grouped[bg].push(b);
+    });
+
+    let html = '';
+    const sortedGroups = Object.keys(grouped).sort();
+
+    sortedGroups.forEach(bg => {
+        let parts = grouped[bg].sort((a, b) => (a["Bauteil-Name"] || '').localeCompare(b["Bauteil-Name"] || ''));
+        html += `
+            <div style="margin-bottom: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                <div style="background: rgba(255,255,255,0.05); padding: 8px 14px; font-weight: 700; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+                    <span style="color: var(--primary);"><i class="fa-solid fa-folder-tree" style="margin-right: 6px;"></i> ${bg}</span>
+                    <span style="font-size: 0.75rem; background: rgba(99, 102, 241, 0.2); color: #a5b4fc; padding: 2px 8px; border-radius: 10px;">${parts.length} Bauteil${parts.length === 1 ? '' : 'e'}</span>
+                </div>
+                <div style="padding: 6px 12px;">
+        `;
+
+        parts.forEach((p, idx) => {
+            let name = p["Bauteil-Name"] || 'Unbenannt';
+            let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            let ub = p["Unterbaugruppe"] || 'Keine';
+            let fertiger = p["Fertiger / Firma"] || '';
+            let verantwort = p["Verantwortlich"] || '';
+            let dates = p.dates || calculateDates(p);
+            
+            // Format deadline depending on status
+            let deadlineText = '';
+            let todayNoTime = new Date();
+            todayNoTime.setHours(0,0,0,0);
+            
+            if (['Nicht begonnen', 'Designing', 'Fertigungszeichnung', 'Kontrolle'].includes(status)) {
+                let dK = new Date(dates.kontrolle);
+                dK.setHours(0,0,0,0);
+                let diff = Math.ceil((dK - todayNoTime) / (1000 * 60 * 60 * 24));
+                deadlineText = `<span style="color: ${diff < 0 ? 'var(--danger)' : (diff <= 7 ? 'var(--warning)' : 'var(--text-muted)')}; font-size: 0.75rem;">CAD: ${dates.kontrolle.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} (${diff < 0 ? `${diff} T überfällig` : `in ${diff} T`})</span>`;
+            } else if (status === 'Zu bestellen') {
+                let dA = new Date(dates.abschickdatum);
+                dA.setHours(0,0,0,0);
+                let diff = Math.ceil((dA - todayNoTime) / (1000 * 60 * 60 * 24));
+                deadlineText = `<span style="color: ${diff < 0 ? 'var(--danger)' : (diff <= 7 ? 'var(--warning)' : 'var(--text-muted)')}; font-size: 0.75rem;">Bestellen bis: ${dates.abschickdatum.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} (${diff < 0 ? `${diff} T überfällig` : `in ${diff} T`})</span>`;
+            } else if (['In Fertigung', 'In Lieferung'].includes(status)) {
+                let dL = new Date(dates.lieferdatum);
+                dL.setHours(0,0,0,0);
+                let diff = Math.ceil((dL - todayNoTime) / (1000 * 60 * 60 * 24));
+                deadlineText = `<span style="color: ${diff < 0 ? 'var(--danger)' : 'var(--text-muted)'}; font-size: 0.75rem;">Lieferung: ${dates.lieferdatum.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} (${diff < 0 ? `${diff} T Verzug` : `in ${diff} T`})</span>`;
+            }
+
+            let borderBottom = idx < parts.length - 1 ? 'border-bottom: 1px solid rgba(255,255,255,0.05);' : '';
+
+            html += `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; ${borderBottom} gap: 10px;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}'); closeStatusModal();" style="font-weight: 700; color: var(--text-color); font-size: 0.85rem; text-decoration: none; border-bottom: 1px dashed currentcolor;" title="Zum Bauteil in die Planung springen">${name}</a>
+                            ${ub !== 'Keine' ? `<span style="font-size: 0.7rem; color: #94a3b8; background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px;"><i class="fa-solid fa-turn-up" style="transform: rotate(90deg); margin-right: 3px;"></i>${ub}</span>` : ''}
+                        </div>
+                        <div style="display: flex; gap: 12px; margin-top: 3px; font-size: 0.75rem; color: var(--text-muted);">
+                            ${verantwort ? `<span><i class="fa-solid fa-user" style="font-size: 0.65rem;"></i> ${verantwort}</span>` : ''}
+                            ${fertiger ? `<span><i class="fa-solid fa-industry" style="font-size: 0.65rem;"></i> ${fertiger}</span>` : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; white-space: nowrap;">
+                        ${deadlineText}
+                        <button class="add-btn" style="padding: 4px 8px; font-size: 0.75rem; border-radius: 6px;" onclick="jumpToBauteil('${escapedName}'); closeStatusModal();" title="Zur Planung springen">
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        `;
+    });
+
+    bodyEl.innerHTML = html;
+    modal.classList.add('show');
+};
+
+window.closeStatusModal = function() {
+    let modal = document.getElementById('statusModal');
+    if (modal) modal.classList.remove('show');
+};
 window.filterNormteile = function() {
     let input = document.getElementById("normteileSearch");
     if (!input) return;
@@ -1933,7 +2071,10 @@ window.filterBauteile = function() {
             for (let j=0; j<textareas.length; j++) text += textareas[j].value.toLowerCase() + " ";
             
             let isMatch = false;
-            if (filter === '#critical' || filter === '#kritisch') {
+            if (filter.startsWith('#status:')) {
+                let targetStatus = filter.replace('#status:', '').trim().toLowerCase();
+                isMatch = (tr.getAttribute('data-status') || '').toLowerCase() === targetStatus;
+            } else if (filter === '#critical' || filter === '#kritisch') {
                 isMatch = tr.getAttribute('data-critical') === 'true';
             } else {
                 isMatch = text.indexOf(filter) > -1;

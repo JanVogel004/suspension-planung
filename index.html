@@ -360,7 +360,7 @@
                 <div class="toolbar">
                     <h3>Interaktives Planungs-Dashboard</h3>
                     <div class="toolbar-actions">
-                        <input type="text" id="bauteileSearch" placeholder="Suchen..." onkeyup="filterBauteile()" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-main); margin-right: 15px;">
+                        <input type="search" id="bauteileSearch" placeholder="Suchen..." onsearch="filterBauteile()" onkeyup="filterBauteile()" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-main); margin-right: 15px;">
                         <button class="add-btn add-col-btn" onclick="addBauteilColumn()" style="display:none !important;"><i class="fa-solid fa-table-columns"></i> Spalte ergänzen</button>
                         <button class="add-btn" onclick="addBauteilRow()"><i class="fa-solid fa-plus"></i> Neues Bauteil</button>
                     </div>
@@ -493,6 +493,32 @@
             </div>
             <div class="modal-footer">
                 <button class="save-btn" onclick="saveModal()"><i class="fa-solid fa-check"></i> Üübernehmen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Details Modal -->
+    <div id="statusModal" class="modal-overlay" onclick="if(event.target === this) closeStatusModal();">
+        <div class="modal-content" style="max-width: 750px; max-height: 85vh; display: flex; flex-direction: column;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+                <div>
+                    <h3 id="statusModalTitle" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Bauteile Übersicht
+                    </h3>
+                    <p id="statusModalSubtitle" style="margin: 4px 0 0; font-size: 0.8rem; color: var(--text-muted);"></p>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button id="statusModalFilterBtn" class="add-btn" style="padding: 6px 12px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-table-list"></i> In Tabelle filtern
+                    </button>
+                    <button class="delete-btn" onclick="closeStatusModal()" style="padding: 6px 10px;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div class="modal-body" id="statusModalBody" style="overflow-y: auto; padding: 15px 0; flex: 1;">
+                <!-- Grouped categories & components injected via JS -->
+            </div>
+            <div class="modal-footer" style="padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+                <button class="save-btn" onclick="closeStatusModal()" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); padding: 8px 16px;">Schließen</button>
             </div>
         </div>
     </div>
