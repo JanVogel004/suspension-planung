@@ -204,9 +204,17 @@
                         </div>
                     </div>
                     <div class="widget">
-                        <h4><i class="fa-solid fa-clock"></i> Kritisch (Nächste 10 Tage & <50% Dauer)</h4>
-                        <div class="critical-number" id="criticalNumber" style="font-size:3rem; font-weight:800; color:var(--danger)">0</div>
-                        <div class="critical-text" style="color:var(--text-muted); font-size:0.85rem; margin-top:5px;">Next Deadlines & To-Dos</div>
+                        <h4><i class="fa-solid fa-triangle-exclamation" style="color:var(--danger);"></i> Kritische Bauteile</h4>
+                        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+                            <div class="critical-number" id="criticalNumber" style="font-size:2.2rem; font-weight:800; color:var(--danger); line-height:1; margin-bottom:0;">0</div>
+                            <div style="text-align:right;">
+                                <div class="critical-text" style="color:var(--text-muted); font-size:0.75rem;">Überfällig & < 4 Wochen</div>
+                                <a href="javascript:void(0)" onclick="switchTab('planung'); setTimeout(()=>{ let i=document.getElementById('bauteileSearch'); if(i){ i.value='#kritisch'; filterBauteile(); } }, 100);" style="color:var(--primary); font-size:0.75rem; text-decoration:none; border-bottom:1px dashed currentcolor;" title="Alle kritischen Bauteile in der Tabelle anzeigen">In Planung filtern &rarr;</a>
+                            </div>
+                        </div>
+                        <div id="criticalList" style="display:flex; flex-direction:column; gap:6px; max-height:170px; overflow-y:auto; padding-right:2px;">
+                            <!-- Injected via JS -->
+                        </div>
                     </div>
                     <div class="widget">
                         <h4><i class="fa-solid fa-list-check"></i> Status Übersicht</h4>

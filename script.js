@@ -536,6 +536,29 @@ function renderBauteile() {
                 html += `<td id="date-liefer-${index}" class="readonly">${dates.lieferdatum.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})}</td>`;
             }
         });
+        let isCrit = false;
+        let d = calculateDates(row);
+        let todayNoTime = new Date();
+        todayNoTime.setHours(0,0,0,0);
+        let s = row["Status"] || 'Nicht begonnen';
+        if (['Nicht begonnen', 'Designing', 'Fertigungszeichnung', 'Kontrolle'].includes(s)) {
+            let dK = new Date(d.kontrolle);
+            dK.setHours(0,0,0,0);
+            let diffDays = Math.ceil((dK - todayNoTime) / (1000 * 60 * 60 * 24));
+            if (diffDays <= 28) isCrit = true;
+        } else if (s === 'Zu bestellen') {
+            let dA = new Date(d.abschickdatum);
+            dA.setHours(0,0,0,0);
+            let diffDays = Math.ceil((dA - todayNoTime) / (1000 * 60 * 60 * 24));
+            if (diffDays <= 7) isCrit = true;
+        } else if (['In Fertigung', 'In Lieferung'].includes(s)) {
+            let dL = new Date(d.lieferdatum);
+            dL.setHours(0,0,0,0);
+            let diffDays = Math.ceil((dL - todayNoTime) / (1000 * 60 * 60 * 24));
+            if (diffDays < 0) isCrit = true;
+        }
+        if (isCrit) tr.setAttribute('data-critical', 'true');
+
         if (row['Status'] === 'Fertig montiert') {
             tr.style.opacity = '0.4';
         }
@@ -749,17 +772,25 @@ function updateDashboard() {
             let diffDays = Math.ceil((dK_noTime - today_noTime) / (1000 * 60 * 60 * 24));
             
             let isAlarm = (diffDays < 0);
+            let isWarning = (diffDays >= 0 && diffDays <= 7);
+            let isWithin4Weeks = (diffDays > 7 && diffDays <= 28);
+            
             let cDateStr = diffDays < 0 ? `<span style="color:var(--danger);font-weight:bold">${dKontrolle.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} <span style="font-size:0.75rem;">(${diffDays} T)</span></span>` : 
                            (diffDays <= 7 ? `<span style="color:var(--warning);font-weight:bold">${dKontrolle.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} <span style="font-size:0.75rem;">(${diffDays} T)</span></span>` : 
                            `<span>${dKontrolle.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} <span style="font-size:0.75rem;color:var(--text-muted);">(${diffDays} T)</span></span>`);
-            let rowStyle = isAlarm ? ` style="background-color: rgba(239, 68, 68, 0.15);"` : ``;
-            let nameStyle = isAlarm ? ` style="color: var(--danger);"` : ``;
+            let rowStyle = isAlarm ? ` style="background-color: rgba(239, 68, 68, 0.15);"` : (isWarning ? ` style="background-color: rgba(245, 158, 11, 0.12);"` : ``);
+            let nameStyle = isAlarm ? ` style="color: var(--danger);"` : (isWarning ? ` style="color: var(--warning);"` : ``);
+
+            let badge = '';
+            if (isAlarm) badge = ` <span style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; font-weight: bold; margin-left: 6px;"><i class="fa-solid fa-triangle-exclamation"></i> Überfällig</span>`;
+            else if (isWarning) badge = ` <span style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; font-weight: bold; margin-left: 6px;"><i class="fa-solid fa-clock"></i> Dringend</span>`;
+            else if (isWithin4Weeks) badge = ` <span style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.4); font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; font-weight: bold; margin-left: 6px;">< 4 Wochen</span>`;
 
             let pName = part["Bauteil-Name"] || 'Unbenannt';
             let escapedName = pName.replace(/'/g, "\\'").replace(/"/g, "&quot;");
             criticalDesignHtml += `
                 <tr${rowStyle}>
-                    <td${nameStyle}><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${pName}</strong></a></td>
+                    <td${nameStyle}><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${pName}</strong></a>${badge}</td>
                     <td>${cDateStr}</td>
                 </tr>
             `;
@@ -919,12 +950,110 @@ function updateDashboard() {
     let rm = document.getElementById('readyMontageBody');
     if (rm) rm.innerHTML = readyHtml;
 
-    // Critical number is now just design deadlines in next 4 weeks
-    let critNum = activeParts.filter(p => {
-        let d = p.dates.kontrolle;
-        return (d >= today && d <= fourWeeks) || (d < today);
-    }).length;
-    document.getElementById('criticalNumber').innerHTML = `<span style="color:var(--danger)">${critNum} kritisch</span>`;
+    // Critical items: Overdue or design deadlines in next 4 weeks (+ overdue orders)
+    let allCritical = [];
+    partsWithDates.forEach(part => {
+        let status = part["Status"] || 'Nicht begonnen';
+        let dates = part.dates;
+        let dK = dates.kontrolle;
+        let dA = dates.abschickdatum;
+        let dL = dates.lieferdatum;
+        
+        let todayNoTime = new Date();
+        todayNoTime.setHours(0,0,0,0);
+        
+        if (['Nicht begonnen', 'Designing', 'Fertigungszeichnung', 'Kontrolle'].includes(status)) {
+            let dK_noTime = new Date(dK);
+            dK_noTime.setHours(0,0,0,0);
+            let diffDays = Math.ceil((dK_noTime - todayNoTime) / (1000 * 60 * 60 * 24));
+            if (diffDays <= 28) {
+                allCritical.push({
+                    p: part,
+                    diffDays: diffDays,
+                    type: 'Design',
+                    date: dK,
+                    status: status
+                });
+            }
+        } else if (status === 'Zu bestellen') {
+            let dA_noTime = new Date(dA);
+            dA_noTime.setHours(0,0,0,0);
+            let diffDays = Math.ceil((dA_noTime - todayNoTime) / (1000 * 60 * 60 * 24));
+            if (diffDays <= 7) {
+                allCritical.push({
+                    p: part,
+                    diffDays: diffDays,
+                    type: 'Bestellung',
+                    date: dA,
+                    status: status
+                });
+            }
+        } else if (['In Fertigung', 'In Lieferung'].includes(status)) {
+            let dL_noTime = new Date(dL);
+            dL_noTime.setHours(0,0,0,0);
+            let diffDays = Math.ceil((dL_noTime - todayNoTime) / (1000 * 60 * 60 * 24));
+            if (diffDays < 0) {
+                allCritical.push({
+                    p: part,
+                    diffDays: diffDays,
+                    type: 'Lieferung',
+                    date: dL,
+                    status: status
+                });
+            }
+        }
+    });
+
+    allCritical.sort((a, b) => a.diffDays - b.diffDays);
+
+    let critNumEl = document.getElementById('criticalNumber');
+    if (critNumEl) {
+        critNumEl.innerHTML = allCritical.length > 0 ? 
+            `<span style="color:var(--danger)">${allCritical.length} kritisch</span>` : 
+            `<span style="color:var(--success)">0 kritisch</span>`;
+    }
+
+    let critListEl = document.getElementById('criticalList');
+    if (critListEl) {
+        if (allCritical.length === 0) {
+            critListEl.innerHTML = `<div style="color:var(--success); font-size:0.85rem; padding:8px 0; display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-circle-check"></i> Alles im Zeitplan! Keine überfälligen Deadlines.
+            </div>`;
+        } else {
+            let listHtml = '';
+            allCritical.forEach(item => {
+                let p = item.p;
+                let name = p["Bauteil-Name"] || 'Unbenannt';
+                let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                let bg = p["Baugruppe"] || '';
+                let diffDays = item.diffDays;
+                
+                let badgeStyle = '';
+                let badgeText = '';
+                if (diffDays < 0) {
+                    badgeStyle = 'background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4);';
+                    badgeText = `<i class="fa-solid fa-triangle-exclamation"></i> ${Math.abs(diffDays)} T überfällig`;
+                } else if (diffDays <= 7) {
+                    badgeStyle = 'background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4);';
+                    badgeText = `<i class="fa-solid fa-clock"></i> in ${diffDays} T`;
+                } else {
+                    badgeStyle = 'background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.4);';
+                    badgeText = `<i class="fa-regular fa-calendar"></i> in ${diffDays} T`;
+                }
+                
+                listHtml += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border-radius:6px; padding:6px 10px; border-left:3px solid ${diffDays < 0 ? 'var(--danger)' : (diffDays <= 7 ? 'var(--warning)' : '#6366f1')}; gap:8px;">
+                        <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">
+                            <a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:var(--text-color); font-weight:700; font-size:0.85rem; text-decoration:none; border-bottom:1px dashed currentcolor;" title="${name} (${bg})">${name}</a>
+                            ${bg ? `<span style="font-size:0.7rem; color:var(--text-muted); margin-left:6px;">${bg}</span>` : ''}
+                        </div>
+                        <span style="${badgeStyle} padding:2px 6px; border-radius:4px; font-weight:600; font-size:0.7rem; white-space:nowrap;">${badgeText}</span>
+                    </div>
+                `;
+            });
+            critListEl.innerHTML = listHtml;
+        }
+    }
 
     // 5. Normteile Übersicht
     let nToOrder = 0;
@@ -1803,7 +1932,14 @@ window.filterBauteile = function() {
             for (let j=0; j<selects.length; j++) text += selects[j].value.toLowerCase() + " ";
             for (let j=0; j<textareas.length; j++) text += textareas[j].value.toLowerCase() + " ";
             
-            if (text.indexOf(filter) > -1) {
+            let isMatch = false;
+            if (filter === '#critical' || filter === '#kritisch') {
+                isMatch = tr.getAttribute('data-critical') === 'true';
+            } else {
+                isMatch = text.indexOf(filter) > -1;
+            }
+            
+            if (isMatch) {
                 tr.style.display = "";
                 anyVisibleInGroup = true;
                 anyVisibleInSubGroup = true;
