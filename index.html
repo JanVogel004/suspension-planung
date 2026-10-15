@@ -225,17 +225,26 @@
                     <div class="widget">
                         <h4><i class="fa-solid fa-boxes-stacked"></i> Normteile Übersicht</h4>
                         <div class="status-list" style="margin-top: 10px; gap: 8px;">
-                            <div class="status-item" style="border-left: 4px solid var(--danger); background-color: var(--bg-main);">
+                            <div class="status-item" onclick="openNormteileStatusModal('to_order')" title="Klicken, um Normteile anzuzeigen" style="border-left: 4px solid var(--danger); background-color: var(--bg-main);">
                                 <span><i class="fa-solid fa-circle-exclamation" style="color:var(--danger); margin-right:5px;"></i> Muss bestellt werden</span>
-                                <strong id="ntToOrder">0</strong>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <strong id="ntToOrder">0</strong>
+                                    <i class="fa-solid fa-chevron-right" style="font-size:0.7rem; opacity:0.4;"></i>
+                                </div>
                             </div>
-                            <div class="status-item" style="border-left: 4px solid var(--warning); background-color: var(--bg-main);">
+                            <div class="status-item" onclick="openNormteileStatusModal('ordered')" title="Klicken, um Normteile anzuzeigen" style="border-left: 4px solid var(--warning); background-color: var(--bg-main);">
                                 <span><i class="fa-solid fa-truck-fast" style="color:var(--warning); margin-right:5px;"></i> Bestellung unterwegs</span>
-                                <strong id="ntOrdered">0</strong>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <strong id="ntOrdered">0</strong>
+                                    <i class="fa-solid fa-chevron-right" style="font-size:0.7rem; opacity:0.4;"></i>
+                                </div>
                             </div>
-                            <div class="status-item" style="border-left: 4px solid var(--success); background-color: var(--bg-main);">
+                            <div class="status-item" onclick="openNormteileStatusModal('ready')" title="Klicken, um Normteile anzuzeigen" style="border-left: 4px solid var(--success); background-color: var(--bg-main);">
                                 <span><i class="fa-solid fa-check-circle" style="color:var(--success); margin-right:5px;"></i> Auf Vorrat / Ready</span>
-                                <strong id="ntReady">0</strong>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <strong id="ntReady">0</strong>
+                                    <i class="fa-solid fa-chevron-right" style="font-size:0.7rem; opacity:0.4;"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -404,7 +413,7 @@
                 <div class="toolbar">
                     <h3>Normteile & Standardkomponenten</h3>
                     <div class="toolbar-actions">
-                        <input type="text" id="normteileSearch" placeholder="Suchen..." onkeyup="filterNormteile()" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-main); margin-right: 15px;">
+                        <input type="search" id="normteileSearch" placeholder="Suchen..." onkeyup="filterNormteile()" onsearch="filterNormteile()" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-main); margin-right: 15px;">
                         <button class="add-btn add-col-btn" onclick="addNormteilColumn()" style="display:none !important;"><i class="fa-solid fa-table-columns"></i> Spalte ergänzen</button>
                         <button class="add-btn" onclick="addNormteilRow()"><i class="fa-solid fa-plus"></i> Neues Normteil</button>
                     </div>
@@ -523,6 +532,32 @@
         </div>
     </div>
 
+    <!-- Normteile Status Details Modal -->
+    <div id="normteileStatusModal" class="modal-overlay" onclick="if(event.target === this) closeNormteileStatusModal();">
+        <div class="modal-content" style="max-width: 750px; max-height: 85vh; display: flex; flex-direction: column;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+                <div>
+                    <h3 id="normteileStatusModalTitle" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-boxes-stacked" style="color: var(--primary);"></i> Normteile Übersicht
+                    </h3>
+                    <p id="normteileStatusModalSubtitle" style="margin: 4px 0 0; font-size: 0.8rem; color: var(--text-muted);"></p>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button id="normteileStatusModalFilterBtn" class="add-btn" style="padding: 6px 12px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-table-list"></i> In Tabelle filtern
+                    </button>
+                    <button class="delete-btn" onclick="closeNormteileStatusModal()" style="padding: 6px 10px;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div class="modal-body" id="normteileStatusModalBody" style="overflow-y: auto; padding: 15px 0; flex: 1;">
+                <!-- Grouped categories & normteile injected via JS -->
+            </div>
+            <div class="modal-footer" style="padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+                <button class="save-btn" onclick="closeNormteileStatusModal()" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); padding: 8px 16px;">Schließen</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Notification Toast -->
     <div id="toast" class="toast">Erfolgreich gespeichert!</div>
 
@@ -535,6 +570,6 @@
         <!-- Injected via JS -->
     </datalist>
 
-    <script src="script.js?v=3"></script>
+    <script src="script.js?v=4"></script>
 </body>
 </html>

@@ -1505,6 +1505,7 @@ function renderNormteile() {
         let nName = row['Normteil Name'];
         let nCat = row['Kategorie'];
         let usageStr = "";
+        let normStatus = 'none';
         
         if (nName && nCat) {
             let totalQty = 0;
@@ -1531,12 +1532,19 @@ function renderNormteile() {
                 let stock = parseInt(row['Bestand']) || 0;
                 let ordered = parseInt(row['Bestellte Stückzahl (Zahl)']) || 0;
                 let arrived = row['Angekommen (Check)'] === 'true' || row['Angekommen (Check)'] === true || row['Angekommen (Check)'] === 'Ja' || row['Angekommen (Check)'] === '1';
-                if (!(totalQty <= stock || (totalQty <= stock + ordered && arrived)) && !(totalQty <= stock + ordered && !arrived)) {
+                if (totalQty <= stock || (totalQty <= stock + ordered && arrived)) {
+                    normStatus = 'ready';
+                } else if (totalQty <= stock + ordered && !arrived) {
+                    normStatus = 'ordered';
+                } else {
+                    normStatus = 'to_order';
                     let missing = totalQty - stock - ordered;
                     if (missing > 0) tr.setAttribute('data-missing', 'true');
                 }
             }
         }
+        tr.setAttribute('data-status', normStatus);
+        tr.setAttribute('data-normteil-name', nName || '');
         
         normteileColumns.forEach(col => {
             let sClass = col === 'Normteil Name' ? ' class="sticky-col-main"' : '';
@@ -1937,16 +1945,260 @@ window.closeStatusModal = function() {
     let modal = document.getElementById('statusModal');
     if (modal) modal.classList.remove('show');
 };
+
+window.jumpToNormteil = function(name) {
+    switchTab('normteile');
+    let searchInput = document.getElementById('normteileSearch');
+    if (searchInput) {
+        searchInput.value = name;
+        filterNormteile();
+    }
+    setTimeout(() => {
+        let tbody = document.getElementById("normteileBody");
+        if (!tbody) return;
+        let trs = tbody.getElementsByTagName("tr");
+        for (let i = 0; i < trs.length; i++) {
+            let tr = trs[i];
+            if (tr.getAttribute('data-normteil-name') === name && tr.style.display !== 'none') {
+                tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                let origBg = tr.style.backgroundColor;
+                tr.style.backgroundColor = 'rgba(99, 102, 241, 0.3)';
+                setTimeout(() => { tr.style.backgroundColor = origBg; }, 2000);
+                break;
+            }
+        }
+    }, 150);
+};
+
+window.filterNormteileByStatus = function(statusKey) {
+    switchTab('normteile');
+    let searchInput = document.getElementById('normteileSearch');
+    if (searchInput) {
+        searchInput.value = `#status:${statusKey}`;
+        filterNormteile();
+    }
+};
+
+window.openNormteileStatusModal = function(statusKey) {
+    let modal = document.getElementById('normteileStatusModal');
+    let titleEl = document.getElementById('normteileStatusModalTitle');
+    let subtitleEl = document.getElementById('normteileStatusModalSubtitle');
+    let bodyEl = document.getElementById('normteileStatusModalBody');
+    let filterBtn = document.getElementById('normteileStatusModalFilterBtn');
+    if (!modal || !bodyEl) return;
+
+    let meta = {
+        'to_order': {
+            title: 'Muss bestellt werden',
+            icon: 'fa-solid fa-circle-exclamation',
+            color: 'var(--danger)',
+            badgeBg: 'rgba(239, 68, 68, 0.2)',
+            badgeColor: '#ef4444'
+        },
+        'ordered': {
+            title: 'Bestellung unterwegs',
+            icon: 'fa-solid fa-truck-fast',
+            color: 'var(--warning)',
+            badgeBg: 'rgba(245, 158, 11, 0.2)',
+            badgeColor: '#f59e0b'
+        },
+        'ready': {
+            title: 'Auf Vorrat / Ready',
+            icon: 'fa-solid fa-check-circle',
+            color: 'var(--success)',
+            badgeBg: 'rgba(16, 185, 129, 0.2)',
+            badgeColor: '#10b981'
+        }
+    }[statusKey] || {
+        title: 'Normteile Übersicht',
+        icon: 'fa-solid fa-boxes-stacked',
+        color: 'var(--primary)',
+        badgeBg: 'rgba(99, 102, 241, 0.2)',
+        badgeColor: '#a5b4fc'
+    };
+
+    let matching = [];
+    normteileData.forEach(row => {
+        let nName = row['Normteil Name'];
+        let nCat = row['Kategorie'];
+        if (!nName || !nCat) return;
+
+        let totalQty = 0;
+        let partsUsing = [];
+        bauteileData.forEach(b => {
+            try {
+                let reqs = JSON.parse(b['Benötigte Normteile'] || '[]');
+                reqs.forEach(r => {
+                    if (r.name === nName && r.cat === nCat) {
+                        let q = parseInt(r.qty) || 1;
+                        totalQty += q;
+                        partsUsing.push({
+                            name: b['Bauteil-Name'] || 'Unbenannt',
+                            qty: q,
+                            baugruppe: b['Baugruppe'] || '',
+                            unterbaugruppe: b['Unterbaugruppe'] || ''
+                        });
+                    }
+                });
+            } catch(e) {}
+        });
+
+        if (totalQty === 0) return; // Nur benötigte Normteile
+
+        let stock = parseInt(row['Bestand']) || 0;
+        let ordered = parseInt(row['Bestellte Stückzahl (Zahl)']) || 0;
+        let arrived = row['Angekommen (Check)'] === 'true' || row['Angekommen (Check)'] === true || row['Angekommen (Check)'] === 'Ja' || row['Angekommen (Check)'] === '1';
+
+        let itemStatus = 'to_order';
+        if (totalQty <= stock || (totalQty <= stock + ordered && arrived)) {
+            itemStatus = 'ready';
+        } else if (totalQty <= stock + ordered && !arrived) {
+            itemStatus = 'ordered';
+        } else {
+            itemStatus = 'to_order';
+        }
+
+        if (itemStatus === statusKey) {
+            let missing = Math.max(0, totalQty - stock - ordered);
+            matching.push({
+                row,
+                name: nName,
+                cat: nCat,
+                totalQty,
+                stock,
+                ordered,
+                arrived,
+                missing,
+                partsUsing
+            });
+        }
+    });
+
+    if (titleEl) {
+        titleEl.innerHTML = `<i class="${meta.icon}" style="color: ${meta.color};"></i> Normteile: <strong>${meta.title}</strong>`;
+    }
+    if (subtitleEl) {
+        subtitleEl.innerHTML = `${matching.length} Normteil${matching.length === 1 ? '' : 'e'} mit Status "${meta.title}"`;
+    }
+
+    if (filterBtn) {
+        filterBtn.onclick = function() {
+            closeNormteileStatusModal();
+            filterNormteileByStatus(statusKey);
+        };
+        filterBtn.style.display = matching.length > 0 ? 'inline-flex' : 'none';
+        filterBtn.innerHTML = `<i class="fa-solid fa-table-list"></i> In Tabelle filtern (${matching.length})`;
+    }
+
+    if (matching.length === 0) {
+        bodyEl.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                <i class="fa-solid fa-boxes-stacked" style="font-size: 2.5rem; opacity: 0.3; margin-bottom: 12px; display: block;"></i>
+                Keine Normteile mit dem Status "<strong>${meta.title}</strong>" vorhanden.
+            </div>
+        `;
+        modal.classList.add('show');
+        return;
+    }
+
+    // Group matching Normteile by Kategorie
+    let grouped = {};
+    matching.forEach(item => {
+        let cat = item.cat || 'Sonstiges';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(item);
+    });
+
+    let html = '';
+    const sortedCats = Object.keys(grouped).sort();
+
+    sortedCats.forEach(cat => {
+        let items = grouped[cat].sort((a, b) => a.name.localeCompare(b.name));
+        html += `
+            <div style="margin-bottom: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                <div style="background: rgba(255,255,255,0.05); padding: 8px 14px; font-weight: 700; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+                    <span style="color: var(--primary);"><i class="fa-solid fa-folder-tree" style="margin-right: 6px;"></i> ${cat}</span>
+                    <span style="font-size: 0.75rem; background: ${meta.badgeBg}; color: ${meta.badgeColor}; padding: 2px 8px; border-radius: 10px; font-weight: 600;">${items.length} Normteil${items.length === 1 ? '' : 'e'}</span>
+                </div>
+                <div style="padding: 6px 12px;">
+        `;
+
+        items.forEach((item, idx) => {
+            let escapedName = item.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            let borderBottom = idx < items.length - 1 ? 'border-bottom: 1px solid rgba(255,255,255,0.05);' : '';
+            
+            // Build badges for quantity
+            let badgesHtml = `<span style="font-size:0.75rem; background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; color:var(--text-main);" title="Gesamter Bedarf über alle Bauteile">Bedarf: <strong>${item.totalQty}x</strong></span>`;
+            badgesHtml += `<span style="font-size:0.75rem; background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; color:var(--text-muted);" title="Aktueller Lagerbestand">Lager: ${item.stock}x</span>`;
+            if (item.ordered > 0) {
+                badgesHtml += `<span style="font-size:0.75rem; background:rgba(245, 158, 11, 0.15); color:#f59e0b; padding:2px 6px; border-radius:4px;" title="Bereits bestellte Stückzahl">Bestellt: ${item.ordered}x</span>`;
+            }
+            if (item.missing > 0) {
+                badgesHtml += `<span style="font-size:0.75rem; background:rgba(239, 68, 68, 0.2); color:#ef4444; font-weight:bold; padding:2px 6px; border-radius:4px;" title="Noch zu bestellende Stückzahl">Fehlend: ${item.missing}x</span>`;
+            }
+
+            // Bauteile where it's used
+            let usedListStr = '';
+            if (item.partsUsing.length > 0) {
+                let partsSummary = item.partsUsing.map(p => `${p.name} (${p.qty}x)`).join(', ');
+                usedListStr = `<div style="font-size:0.72rem; color:var(--text-muted); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${partsSummary}">
+                    <i class="fa-solid fa-cube" style="font-size:0.65rem; margin-right:3px;"></i> Verbaut in: ${partsSummary}
+                </div>`;
+            }
+
+            html += `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; ${borderBottom} gap: 10px;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <a href="javascript:void(0)" onclick="jumpToNormteil('${escapedName}'); closeNormteileStatusModal();" style="font-weight: 700; color: var(--text-color); font-size: 0.85rem; text-decoration: none; border-bottom: 1px dashed currentcolor;" title="Zum Normteil in die Tabelle springen">${item.name}</a>
+                            ${badgesHtml}
+                        </div>
+                        ${usedListStr}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+                        <button class="add-btn" style="padding: 4px 8px; font-size: 0.75rem; border-radius: 6px;" onclick="jumpToNormteil('${escapedName}'); closeNormteileStatusModal();" title="Zum Normteil in Tabelle springen">
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        `;
+    });
+
+    bodyEl.innerHTML = html;
+    modal.classList.add('show');
+};
+
+window.closeNormteileStatusModal = function() {
+    let modal = document.getElementById('normteileStatusModal');
+    if (modal) modal.classList.remove('show');
+};
+
 window.filterNormteile = function() {
     let input = document.getElementById("normteileSearch");
     if (!input) return;
-    let filter = input.value.toLowerCase();
+    let filter = input.value.toLowerCase().trim();
     let tbody = document.getElementById("normteileBody");
     if (!tbody) return;
     
     let trs = tbody.getElementsByTagName("tr");
     let currentGroupHeader = null;
     let anyVisibleInGroup = false;
+
+    // Check if status filter is active
+    let targetStatus = null;
+    if (filter === '#missing' || filter === '#to_order' || filter === '#status:to_order' || filter === '#status:muss bestellt werden') {
+        targetStatus = 'to_order';
+    } else if (filter === '#ordered' || filter === '#status:ordered' || filter === '#status:bestellung unterwegs') {
+        targetStatus = 'ordered';
+    } else if (filter === '#ready' || filter === '#status:ready' || filter === '#status:auf vorrat / ready' || filter === '#status:auf vorrat') {
+        targetStatus = 'ready';
+    }
 
     for (let i = 0; i < trs.length; i++) {
         let tr = trs[i];
@@ -1957,19 +2209,23 @@ window.filterNormteile = function() {
             currentGroupHeader = tr;
             anyVisibleInGroup = false;
         } else {
-            let inputs = tr.getElementsByTagName("input");
-            let selects = tr.getElementsByTagName("select");
-            let textareas = tr.getElementsByTagName("textarea");
-            let text = tr.textContent.toLowerCase() + " ";
-            
-            for (let j=0; j<inputs.length; j++) text += inputs[j].value.toLowerCase() + " ";
-            for (let j=0; j<selects.length; j++) text += selects[j].value.toLowerCase() + " ";
-            for (let j=0; j<textareas.length; j++) text += textareas[j].value.toLowerCase() + " ";
-            
             let isMatch = false;
-            if (filter === '#missing') {
-                isMatch = tr.getAttribute('data-missing') === 'true';
+            if (targetStatus) {
+                let st = tr.getAttribute('data-status');
+                isMatch = (st === targetStatus);
+                if (filter === '#missing') {
+                    isMatch = tr.getAttribute('data-missing') === 'true';
+                }
             } else {
+                let inputs = tr.getElementsByTagName("input");
+                let selects = tr.getElementsByTagName("select");
+                let textareas = tr.getElementsByTagName("textarea");
+                let text = tr.textContent.toLowerCase() + " ";
+                
+                for (let j=0; j<inputs.length; j++) text += inputs[j].value.toLowerCase() + " ";
+                for (let j=0; j<selects.length; j++) text += selects[j].value.toLowerCase() + " ";
+                for (let j=0; j<textareas.length; j++) text += textareas[j].value.toLowerCase() + " ";
+                
                 isMatch = text.indexOf(filter) > -1;
             }
             
