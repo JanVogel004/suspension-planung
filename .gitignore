@@ -1,0 +1,7 @@
+# Ignoriere temporäre und gecachte Dateien
+__pycache__/
+*.pyc
+
+# Ignoriere die generierten Backup-JSON-Dateien, damit das Git-Repo nicht anschwillt
+backups/auto/*.json
+!backups/auto/.gitkeep

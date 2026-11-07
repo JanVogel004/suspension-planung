@@ -26,14 +26,16 @@ WebApp_Planung/
 ├── style.css                # Gesamtes Styling & Theme (~870 Zeilen)
 ├── PROJECT_DOCUMENTATION.md # Diese Dokumentation
 │
-├── auto_backup.ps1          # Automatisches Backup via PowerShell (Supabase REST -> JSON)
-├── auto_backup.py           # Automatisches Backup via Python
-├── run_backup.bat           # Starter für auto_backup.py
-├── run_backup_silently.vbs  # Silent VBScript-Wrapper (ohne Konsolenfenster)
+├── backup_tools/            # Alle Backup-Werkzeuge & Automatisierungsskripte
+│   ├── auto_backup.ps1      # Automatisches Backup via PowerShell (Supabase REST -> JSON)
+│   ├── auto_backup.py       # Automatisches Backup via Python
+│   ├── run_backup.bat       # Starter für auto_backup.py
+│   └── run_backup_silently.vbs # Silent VBScript-Wrapper (ohne Konsolenfenster)
 │
 ├── backups/
 │   └── auto/                # Automatisch abgelegte JSON-Backups (letzte 30 Tage)
 │
+├── .gitignore               # Ignoriert generierte Backup-JSONs & Caches
 └── old_local/               # ARCHIV: Frühere lokale Flask/CSV-Version (nicht aktiv)
     ├── app.py
     ├── bauteile.csv
