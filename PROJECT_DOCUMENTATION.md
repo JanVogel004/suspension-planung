@@ -129,6 +129,7 @@ Standard-Spalten (`isStandardLCol`):
 - `Firma (Fertiger)`
 - `Zusammenarbeit` (Ampel: `""`, `Zufrieden`, `Können mehr machen`, `Wollen weniger machen`)
 - `Typ` (`Sponsoren`, `Zulieferer`, `Mögliche Sponsoren`, `Sonstige`)
+- `Bestätigt für Saison (Check)` (`true` / `false` / Checkbox: "Bestätigt für die Saison (angefragt!)", mit Quick-Filter `Alle | Bestätigt | Angefragt / Offen` und Zähler-Badge im Header)
 - `Teile / Komponenten (ct8)`
 - `Email`
 - `Webseite`

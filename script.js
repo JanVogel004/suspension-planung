@@ -49,6 +49,8 @@ let bauteileData = [];
 let bauteileColumns = [];
 let lieferantenData = [];
 let lieferantenColumns = [];
+let supabaseLieferantenColumns = [];
+let currentSponsorFilter = 'all';
 let normteileData = [];
 let normteileColumns = [];
 
@@ -142,8 +144,28 @@ async function loadData() {
         lieferantenData = await lRes.json();
         if (!Array.isArray(lieferantenData)) throw new Error('Lieferanten: Ungültige Antwort');
         let lColsRaw = lieferantenData.length > 0 ? Object.keys(lieferantenData[0]).filter(k => k !== 'id') : ['Fertigungsverfahren', 'Firma (Fertiger)', 'Zusammenarbeit', 'Typ', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen'];
+        supabaseLieferantenColumns = [...lColsRaw];
         let lPref = ['Fertigungsverfahren', 'Firma (Fertiger)', 'Zusammenarbeit', 'Typ', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen'];
         lieferantenColumns = [...new Set([...lPref.filter(c => lColsRaw.includes(c)), ...lColsRaw])];
+        
+        // Hydrate sponsor season confirmation state
+        lieferantenData.forEach(r => {
+            let notes = r['Notizen'] || '';
+            let isConf = false;
+            if (r['Bestätigt für Saison (Check)'] !== undefined && r['Bestätigt für Saison (Check)'] !== '') {
+                isConf = r['Bestätigt für Saison (Check)'] === 'true' || r['Bestätigt für Saison (Check)'] === true;
+            } else if (r['Bestätigt für Saison'] !== undefined && r['Bestätigt für Saison'] !== '') {
+                isConf = r['Bestätigt für Saison'] === 'true' || r['Bestätigt für Saison'] === true;
+            } else if (notes.includes('<!--saison:confirmed-->') || notes.includes('[Saison: Bestätigt]')) {
+                isConf = true;
+            } else {
+                let f = r['Firma (Fertiger)'] || '';
+                if (f && localStorage.getItem('spon_conf_' + f) === 'true') {
+                    isConf = true;
+                }
+            }
+            r['Bestätigt für Saison (Check)'] = isConf ? 'true' : 'false';
+        });
         
         const nRes = await fetch(`${SUPABASE_URL}/normteile?select=*`, { headers: getAuthHeaders(), cache: 'no-store' });
         if (!nRes.ok) { const errText = await nRes.text(); throw new Error('Normteile laden fehlgeschlagen: ' + nRes.status + ' ' + errText); }
@@ -224,10 +246,34 @@ async function saveData() {
             throw new Error("Fehler beim Speichern der Bauteile: " + err);
         }
 
-        let cleanL = lieferantenData.map(r => { let o={}; lieferantenColumns.forEach(c => o[c]=r[c]||'');  return o; });
+        let cleanL = lieferantenData.map(r => {
+            let o = {};
+            let knownCols = (supabaseLieferantenColumns && supabaseLieferantenColumns.length > 0)
+                ? supabaseLieferantenColumns
+                : ['Fertigungsverfahren', 'Firma (Fertiger)', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Zusammenarbeit', 'Typ'];
+            
+            knownCols.forEach(c => {
+                o[c] = r[c] === undefined ? '' : r[c];
+            });
+            
+            let isConf = r['Bestätigt für Saison (Check)'] === 'true' || r['Bestätigt für Saison (Check)'] === true;
+            
+            if (knownCols.includes('Bestätigt für Saison (Check)')) {
+                o['Bestätigt für Saison (Check)'] = isConf ? 'true' : 'false';
+            } else if (knownCols.includes('Bestätigt für Saison')) {
+                o['Bestätigt für Saison'] = isConf ? 'true' : 'false';
+            } else {
+                let rawNotes = (o['Notizen'] || '').replace(/<!--saison:confirmed-->/g, '').replace(/\[Saison: Bestätigt\]/g, '').trim();
+                o['Notizen'] = isConf ? (rawNotes ? rawNotes + ' <!--saison:confirmed-->' : '<!--saison:confirmed-->') : rawNotes;
+            }
+            return o;
+        });
         await fetch(`${SUPABASE_URL}/lieferanten?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders(), cache: 'no-store' });
         let r2 = await fetch(`${SUPABASE_URL}/lieferanten`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(cleanL) });
-        if (!r2.ok) throw new Error("Fehler beim Speichern der Lieferanten");
+        if (!r2.ok) {
+            const err = await r2.text();
+            throw new Error("Fehler beim Speichern der Lieferanten: " + err);
+        }
 
         let cleanN = normteileData.map(r => { let o={}; normteileColumns.forEach(c => o[c]=r[c]||'');  return o; });
         await fetch(`${SUPABASE_URL}/normteile?id=not.is.null`, { method: 'DELETE', headers: getAuthHeaders(), cache: 'no-store' });
@@ -587,7 +633,7 @@ function renderBauteile() {
 }
 
 function isStandardLCol(col) {
-    return ['Fertigungsverfahren', 'Firma (Fertiger)', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen', 'Zusammenarbeit', 'Typ'].includes(col);
+    return ['Fertigungsverfahren', 'Firma (Fertiger)', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen', 'Zusammenarbeit', 'Typ', 'Bestätigt für Saison (Check)'].includes(col);
 }
 
 function renderLieferanten() {
@@ -646,6 +692,8 @@ function renderLieferanten() {
     let currentTyp = '__NONE__';
     sorted.forEach(({row, index}) => {
         let typ = row['Typ'] || '';
+        let isConfirmed = row['Bestätigt für Saison (Check)'] === 'true' || row['Bestätigt für Saison (Check)'] === true;
+        
         if (typ !== currentTyp) {
             currentTyp = typ;
             const hiddenColsCount = lieferantenColumns.includes('Typ') ? 1 : 0;
@@ -654,10 +702,27 @@ function renderLieferanten() {
             headerTr.className = 'group-header';
             const color = typColors[typ] || '#475569';
             const label = typLabels[typ] || typ;
-            headerTr.innerHTML = `<td colspan="${colCount}"><div class="sticky-group-header" style="color:${color}; border-left:3px solid ${color}; padding-left:12px;">${label}</div></td>`;
+            
+            let extraBadge = '';
+            if (typ === 'Sponsoren') {
+                let sponList = lieferantenData.filter(l => (l['Typ'] || '') === 'Sponsoren');
+                let confCount = sponList.filter(l => l['Bestätigt für Saison (Check)'] === 'true' || l['Bestätigt für Saison (Check)'] === true).length;
+                extraBadge = `<span style="font-size:0.75rem; font-weight:600; background:rgba(34, 197, 94, 0.2); color:#4ade80; border:1px solid rgba(34, 197, 94, 0.4); padding:2px 10px; border-radius:12px; margin-left:12px;"><i class="fa-solid fa-circle-check"></i> ${confCount}/${sponList.length} für Saison bestätigt</span>`;
+            } else if (typ === 'Mögliche Sponsoren') {
+                let mList = lieferantenData.filter(l => (l['Typ'] || '') === 'Mögliche Sponsoren');
+                let confCount = mList.filter(l => l['Bestätigt für Saison (Check)'] === 'true' || l['Bestätigt für Saison (Check)'] === true).length;
+                if (confCount > 0) {
+                    extraBadge = `<span style="font-size:0.75rem; font-weight:600; background:rgba(34, 197, 94, 0.2); color:#4ade80; border:1px solid rgba(34, 197, 94, 0.4); padding:2px 10px; border-radius:12px; margin-left:12px;"><i class="fa-solid fa-circle-check"></i> ${confCount} zugesagt</span>`;
+                }
+            }
+            
+            headerTr.innerHTML = `<td colspan="${colCount}"><div class="sticky-group-header" style="color:${color}; border-left:3px solid ${color}; padding-left:12px; display:flex; align-items:center;">${label} ${extraBadge}</div></td>`;
             tbody.appendChild(headerTr);
         }
         const tr = document.createElement('tr');
+        tr.setAttribute('data-sponsor-confirmed', isConfirmed ? 'true' : 'false');
+        tr.setAttribute('data-typ', typ);
+        
         let html = '';
         lieferantenColumns.forEach(col => {
             if (col === 'Typ') return;
@@ -677,14 +742,30 @@ function renderLieferanten() {
             } else if (col === 'Firma (Fertiger)') {
                 let typ = row['Typ'] || '';
                 let typOpts = ['Sponsoren', 'Zulieferer', 'Mögliche Sponsoren', ''].map(t => `<option value="${t}" ${typ === t ? 'selected' : ''}>${t === '' ? '📋 Sonstige' : (t === 'Sponsoren' ? '⭐ Sponsoren' : (t === 'Zulieferer' ? '🔧 Zulieferer' : '💡 Mögliche Sponsoren'))}</option>`).join('');
+                
+                let checkboxLine = '';
+                if (typ === 'Sponsoren' || typ === 'Mögliche Sponsoren' || isConfirmed) {
+                    checkboxLine = `
+                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.75rem; margin-top:4px; padding:3px 8px; border-radius:5px; cursor:pointer; user-select:none; background:${isConfirmed ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.04)'}; border:1px solid ${isConfirmed ? 'rgba(34, 197, 94, 0.4)' : 'rgba(255, 255, 255, 0.08)'}; transition:all 0.15s ease;" title="Bestätigt für die Saison (angefragt)">
+                            <input type="checkbox" ${isConfirmed ? 'checked' : ''} onchange="updateSponsorConfirmed(${index}, this.checked);" style="width:14px; height:14px; accent-color:#16a34a; cursor:pointer; margin:0;">
+                            <span style="font-weight:${isConfirmed ? '600' : '400'}; color:${isConfirmed ? '#4ade80' : 'var(--text-muted)'};">
+                                ${isConfirmed ? '✔ Bestätigt für Saison (angefragt)' : 'Bestätigt für die Saison (also angefragt!)'}
+                            </span>
+                        </label>
+                    `;
+                }
+                
                 html += `<td>
-                    <div style="display:flex; flex-direction:column; gap:6px;">
-                        <input type="text" value="${val}" onchange="updateL(${index}, '${col}', this.value); renderBauteile(); renderLieferanten();" style="font-weight:bold;">
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        <input type="text" value="${val}" onchange="updateL(${index}, '${col}', this.value); renderBauteile(); renderLieferanten();" style="font-weight:bold; ${isConfirmed ? 'color:#4ade80;' : ''}">
                         <select style="font-size:0.7rem; padding:3px; border-radius:4px; border:1px solid var(--border); background:var(--bg-dark); color:var(--text-muted); cursor:pointer;" onchange="updateL(${index}, 'Typ', this.value); renderLieferanten();" title="Kategorie ändern">
                             ${typOpts}
                         </select>
+                        ${checkboxLine}
                     </div>
                 </td>`;
+            } else if (col === 'Bestätigt für Saison (Check)') {
+                html += `<td style="text-align:center;"><input type="checkbox" ${isConfirmed ? 'checked' : ''} onchange="updateSponsorConfirmed(${index}, this.checked);" style="width:20px; height:20px; cursor:pointer;"></td>`;
             } else if (col.toLowerCase().includes('(check)')) {
                 let isChecked = val === 'true' || val === true || val === 'Ja' || val === '1';
                 html += `<td style="text-align:center;"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="updateL(${index}, '${col}', this.checked ? 'true' : 'false'); renderLieferanten();" style="width:20px; height:20px; cursor:pointer;"></td>`;
@@ -702,7 +783,11 @@ function renderLieferanten() {
 
                 if (isTextarea) {
                     let r = col === 'Teile / Komponenten (ct8)' ? '2' : '1';
-                    html += `<td><textarea rows="${r}" style="white-space: pre-wrap;" onchange="updateL(${index}, '${col}', this.value)" ondblclick="openTextModal('lieferanten', ${index}, '${col}')">${val}</textarea></td>`;
+                    let displayVal = val;
+                    if (col === 'Notizen') {
+                        displayVal = (val || '').replace(/<!--saison:confirmed-->/g, '').replace(/\[Saison: Bestätigt\]/g, '').trim();
+                    }
+                    html += `<td><textarea rows="${r}" style="white-space: pre-wrap;" onchange="updateL(${index}, '${col}', this.value)" ondblclick="openTextModal('lieferanten', ${index}, '${col}')">${displayVal}</textarea></td>`;
                 } else {
                     let sClass = col === "Firma (Fertiger)" ? ' class="sticky-col-main"' : "";
                     html += `<td${sClass}><input type="${type}" value="${val}" onchange="updateL(${index}, '${col}', this.value)" ondblclick="if(this.type==='text') openTextModal('lieferanten', ${index}, '${col}')"></td>`;
@@ -722,7 +807,34 @@ function renderLieferanten() {
         tr.innerHTML = html;
         tbody.appendChild(tr);
     });
+    
+    // Re-apply active search/filters after render
+    let searchInput = document.getElementById('lieferantenSearch');
+    if ((searchInput && searchInput.value.trim() !== '') || currentSponsorFilter !== 'all') {
+        filterLieferanten();
+    }
 }
+
+window.updateSponsorConfirmed = function(index, isChecked) {
+    pushHistory();
+    let val = isChecked ? 'true' : 'false';
+    if (!lieferantenData[index]) return;
+    lieferantenData[index]['Bestätigt für Saison (Check)'] = val;
+    let firma = lieferantenData[index]['Firma (Fertiger)'] || '';
+    if (firma) {
+        localStorage.setItem('spon_conf_' + firma, val);
+    }
+    
+    // Keep Notizen in sync if column not yet in Supabase
+    if (!supabaseLieferantenColumns.includes('Bestätigt für Saison (Check)') && !supabaseLieferantenColumns.includes('Bestätigt für Saison')) {
+        let notes = lieferantenData[index]['Notizen'] || '';
+        let clean = notes.replace(/<!--saison:confirmed-->/g, '').replace(/\[Saison: Bestätigt\]/g, '').trim();
+        lieferantenData[index]['Notizen'] = isChecked ? (clean ? clean + ' <!--saison:confirmed-->' : '<!--saison:confirmed-->') : clean;
+    }
+    
+    markDirty();
+    renderLieferanten();
+};
 
 // Helper to determine order date for a part
 function getOrderDate(part, dates) {
@@ -1380,7 +1492,14 @@ renderLieferanten();
 
 function updateL(index, key, value) {
     pushHistory();
-    lieferantenData[index][key] = value;
+    if (!lieferantenData[index]) return;
+    if (key === 'Notizen') {
+        let isConf = lieferantenData[index]['Bestätigt für Saison (Check)'] === 'true' || lieferantenData[index]['Bestätigt für Saison (Check)'] === true;
+        let cleanVal = value.replace(/<!--saison:confirmed-->/g, '').replace(/\[Saison: Bestätigt\]/g, '').trim();
+        lieferantenData[index][key] = isConf ? (cleanVal ? cleanVal + ' <!--saison:confirmed-->' : '<!--saison:confirmed-->') : cleanVal;
+    } else {
+        lieferantenData[index][key] = value;
+    }
     markDirty();
 }
 
@@ -1444,6 +1563,7 @@ window.openAddLieferantModal = function() {
     document.getElementById('newLieferantNameInput').value = '';
     document.getElementById('newLieferantEmailInput').value = '';
     document.getElementById('newLieferantWebInput').value = '';
+    if (document.getElementById('newLieferantBestaetigtInput')) document.getElementById('newLieferantBestaetigtInput').checked = false;
     if (document.getElementById('newLieferantTypInput')) document.getElementById('newLieferantTypInput').value = 'Sponsoren';
     updateVerfahrenSuggestions();
 };
@@ -1461,6 +1581,7 @@ window.saveAddLieferantModal = function() {
         let email = document.getElementById('newLieferantEmailInput').value.trim();
         let web = document.getElementById('newLieferantWebInput').value.trim();
         let typ = document.getElementById('newLieferantTypInput') ? document.getElementById('newLieferantTypInput').value : '';
+        let isConf = document.getElementById('newLieferantBestaetigtInput') ? (document.getElementById('newLieferantBestaetigtInput').checked ? 'true' : 'false') : 'false';
         
         if (!name) { alert("Bitte einen Firmennamen eingeben!"); return; }
         
@@ -1472,6 +1593,11 @@ window.saveAddLieferantModal = function() {
         newRow["Typ"] = typ;
         newRow["Email"] = email;
         newRow["Webseite"] = web;
+        newRow["Bestätigt für Saison (Check)"] = isConf;
+        
+        if (isConf === 'true') {
+            localStorage.setItem('spon_conf_' + name, 'true');
+        }
         
         lieferantenData.push(newRow);
         markDirty();
@@ -2416,10 +2542,25 @@ window.filterNormteile = function() {
         currentGroupHeader.style.display = (filter === '' || anyVisibleInGroup) ? "" : "none";
     }
 };
+window.setSponsorFilter = function(filter) {
+    currentSponsorFilter = filter;
+    document.querySelectorAll('.filter-pills .pill-btn').forEach(btn => btn.classList.remove('active'));
+    if (filter === 'all') {
+        let b = document.getElementById('filterSponAll');
+        if (b) b.classList.add('active');
+    } else if (filter === 'confirmed') {
+        let b = document.getElementById('filterSponConf');
+        if (b) b.classList.add('active');
+    } else if (filter === 'open') {
+        let b = document.getElementById('filterSponOpen');
+        if (b) b.classList.add('active');
+    }
+    filterLieferanten();
+};
+
 window.filterLieferanten = function() {
     let input = document.getElementById("lieferantenSearch");
-    if (!input) return;
-    let filter = input.value.toLowerCase();
+    let filter = input ? input.value.toLowerCase().trim() : '';
     let tbody = document.getElementById("lieferantenBody");
     if (!tbody) return;
     
@@ -2431,11 +2572,27 @@ window.filterLieferanten = function() {
         let tr = trs[i];
         if (tr.classList.contains('group-header')) {
             if (currentGroupHeader) {
-                currentGroupHeader.style.display = (filter === '' || anyVisibleInGroup) ? "" : "none";
+                currentGroupHeader.style.display = ((filter === '' && currentSponsorFilter === 'all') || anyVisibleInGroup) ? "" : "none";
             }
             currentGroupHeader = tr;
             anyVisibleInGroup = false;
         } else {
+            let isConfirmed = tr.getAttribute('data-sponsor-confirmed') === 'true';
+            let rowTyp = tr.getAttribute('data-typ') || '';
+            
+            // Check sponsor status filter
+            let passesFilter = true;
+            if (currentSponsorFilter === 'confirmed') {
+                passesFilter = isConfirmed;
+            } else if (currentSponsorFilter === 'open') {
+                passesFilter = (rowTyp === 'Sponsoren' || rowTyp === 'Mögliche Sponsoren') && !isConfirmed;
+            }
+            
+            if (!passesFilter) {
+                tr.style.display = "none";
+                continue;
+            }
+            
             let inputs = tr.getElementsByTagName("input");
             let selects = tr.getElementsByTagName("select");
             let textareas = tr.getElementsByTagName("textarea");
@@ -2445,7 +2602,7 @@ window.filterLieferanten = function() {
             for (let j=0; j<selects.length; j++) text += selects[j].value.toLowerCase() + " ";
             for (let j=0; j<textareas.length; j++) text += textareas[j].value.toLowerCase() + " ";
             
-            if (text.indexOf(filter) > -1) {
+            if (filter === '' || text.indexOf(filter) > -1) {
                 tr.style.display = "";
                 anyVisibleInGroup = true;
             } else {
@@ -2454,7 +2611,7 @@ window.filterLieferanten = function() {
         }
     }
     if (currentGroupHeader) {
-        currentGroupHeader.style.display = (filter === '' || anyVisibleInGroup) ? "" : "none";
+        currentGroupHeader.style.display = ((filter === '' && currentSponsorFilter === 'all') || anyVisibleInGroup) ? "" : "none";
     }
 };
 window.filterBauteile = function() {
@@ -2540,7 +2697,12 @@ function openTextModal(type, index, col) {
     currentTextCol = col;
     let val = '';
     if (type === 'bauteile') val = bauteileData[index][col] || '';
-    else if (type === 'lieferanten') val = lieferantenData[index][col] || '';
+    else if (type === 'lieferanten') {
+        val = lieferantenData[index][col] || '';
+        if (col === 'Notizen') {
+            val = (val || '').replace(/<!--saison:confirmed-->/g, '').replace(/\[Saison: Bestätigt\]/g, '').trim();
+        }
+    }
     else if (type === 'normteile') val = normteileData[index][col] || '';
     
     document.getElementById('textModalTitle').innerText = col + ' bearbeiten';

@@ -867,3 +867,36 @@ body.read-only button.tab-btn[onclick*="lieferanten"]::after {
 }
 
 body.read-only #lieferanten { display: none !important; }
+
+/* Filter Pills for Toolbar */
+.filter-pills {
+    display: inline-flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 4px;
+}
+
+.pill-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pill-btn:hover {
+    color: var(--text-main);
+    background: var(--bg-hover);
+}
+
+.pill-btn.active {
+    background: var(--accent);
+    color: white;
+}
+

@@ -59,6 +59,12 @@
                     <label style="display:block; margin-bottom:5px; color:var(--text-muted)">Webseite (Optional):</label>
                     <input type="text" id="newLieferantWebInput" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);">
                 </div>
+                <div style="margin-bottom: 15px;" id="newLieferantBestaetigtContainer">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--text-main); font-size:0.9rem; user-select:none; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:6px; border:1px solid var(--border);">
+                        <input type="checkbox" id="newLieferantBestaetigtInput" style="width:18px; height:18px; accent-color:#16a34a; cursor:pointer;">
+                        <span>Bestätigt für die Saison (angefragt)</span>
+                    </label>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="add-btn" onclick="saveAddLieferantModal()"><i class="fa-solid fa-plus"></i> Hinzufügen</button>
@@ -409,8 +415,13 @@
             <section id="lieferanten" class="tab-content">
                 <div class="toolbar">
                     <h3>Fertigungsverfahren, Historie und aktuelle Zuordnung</h3>
-                    <div class="toolbar-actions">
-                        <input type="text" id="lieferantenSearch" placeholder="Suchen..." onkeyup="filterLieferanten()" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-main); margin-right: 15px;">
+                    <div class="toolbar-actions" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <div class="filter-pills">
+                            <button class="pill-btn active" id="filterSponAll" onclick="setSponsorFilter('all')">Alle</button>
+                            <button class="pill-btn" id="filterSponConf" onclick="setSponsorFilter('confirmed')" style="color:#4ade80;"><i class="fa-solid fa-circle-check"></i> Bestätigt</button>
+                            <button class="pill-btn" id="filterSponOpen" onclick="setSponsorFilter('open')" style="color:#f59e0b;"><i class="fa-solid fa-clock"></i> Angefragt / Offen</button>
+                        </div>
+                        <input type="text" id="lieferantenSearch" placeholder="Suchen..." onkeyup="filterLieferanten()" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-main);">
                         <button class="add-btn add-col-btn" onclick="addLieferantColumn()" style="display:none !important;"><i class="fa-solid fa-table-columns"></i> Spalte ergänzen</button>
                         <button class="add-btn" onclick="addLieferantRow()"><i class="fa-solid fa-plus"></i> Neuer Lieferant</button>
                     </div>
@@ -589,6 +600,6 @@
         <!-- Injected via JS -->
     </datalist>
 
-    <script src="script.js?v=7"></script>
+    <script src="script.js?v=8"></script>
 </body>
 </html>
