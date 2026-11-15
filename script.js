@@ -421,11 +421,22 @@ function renderBauteile() {
             let mZeit = row["Montage Zeit"] || 0;
             let uStatus = row["Unterbaugruppen-Status"] || 'Ausstehend';
 
+            let subParts = bauteileData.filter(b => (b["Baugruppe"] || 'Sonstiges') === currentGroup && (b["Unterbaugruppe"] || 'Keine') === currentSubGroup);
+            let missingInSub = subParts.filter(p => !['Im Lager', 'Assembled', 'Fertig montiert'].includes(p["Status"]));
+            let subBadge = '';
+            if (currentSubGroup !== 'Keine') {
+                if (missingInSub.length === 0) {
+                    subBadge = `<span style="background:rgba(16, 185, 129, 0.2); color:#10b981; border:1px solid rgba(16, 185, 129, 0.4); padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Alle Teile im Lager</span>`;
+                } else {
+                    subBadge = `<span style="background:rgba(239, 68, 68, 0.2); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.4); padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600;"><i class="fa-solid fa-circle-xmark"></i> ${missingInSub.length}/${subParts.length} Teile fehlen</span>`;
+                }
+            }
+
             const uHeaderTr = document.createElement('tr');
             uHeaderTr.className = 'sub-group-header';
             uHeaderTr.style.backgroundColor = 'var(--bg-main)';
             uHeaderTr.innerHTML = `<td colspan="100%"><div class="sticky-sub-group-header" style="display:inline-flex; align-items:center; gap: 20px; padding-left: 20px; border-bottom: 1px solid var(--border); padding-top:5px; padding-bottom:5px;">
-                <span style="font-weight:600; font-size:0.9rem; color:var(--text-main);"><i class="fa-solid fa-folder-tree" style="margin-right:5px; color:var(--primary);"></i> ${currentSubGroup}</span>
+                <span style="font-weight:600; font-size:0.9rem; color:var(--text-main); display:inline-flex; align-items:center; gap:8px;"><i class="fa-solid fa-folder-tree" style="margin-right:2px; color:var(--primary);"></i> ${currentSubGroup} ${subBadge}</span>
                 <div style="font-size:0.8rem; font-weight:normal; display:flex; align-items:center; gap:5px;">Assembly Zeit: <input type="number" value="${aZeit}" style="width:50px; padding:2px; font-size:0.8rem; border-radius:4px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);" oninput="updateUnterbaugruppe('${currentGroup}', '${currentSubGroup}', 'Assembly Zeit', this.value)"></div>
                 <div style="font-size:0.8rem; font-weight:normal; display:flex; align-items:center; gap:5px;">Montage Zeit: <input type="number" value="${mZeit}" style="width:50px; padding:2px; font-size:0.8rem; border-radius:4px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);" oninput="updateUnterbaugruppe('${currentGroup}', '${currentSubGroup}', 'Montage Zeit', this.value)"></div>
                 <div style="font-size:0.8rem; font-weight:normal; display:flex; align-items:center; gap:5px;">Status: 
@@ -481,13 +492,14 @@ function renderBauteile() {
             } else if (col === 'Status') {
                 let c = 'badge-hoch';
                 if(['Assembled', 'Fertig montiert'].includes(val)) c = 'badge-niedrig';
-                else if(['In Fertigung', 'In Lieferung', 'Im Lager'].includes(val)) c = 'badge-mittel';
+                else if(['Bestellt', 'In Fertigung', 'In Lieferung', 'Im Lager'].includes(val)) c = 'badge-mittel';
                 html += `<td><select class="badge-status ${c}" onchange="updateB(${index}, '${col}', this.value); renderBauteile();">
                     <option value="Nicht begonnen" ${val==='Nicht begonnen'?'selected':''}>Nicht begonnen</option>
                     <option value="Designing" ${val==='Designing'?'selected':''}>Designing</option>
                     <option value="Fertigungszeichnung" ${val==='Fertigungszeichnung'?'selected':''}>Fertigungszeichnung</option>
                     <option value="Kontrolle" ${val==='Kontrolle'?'selected':''}>Kontrolle</option>
                     <option value="Zu bestellen" ${val==='Zu bestellen'?'selected':''}>Zu bestellen</option>
+                    <option value="Bestellt" ${val==='Bestellt'?'selected':''}>Bestellt</option>
                     <option value="In Fertigung" ${val==='In Fertigung'?'selected':''}>In Fertigung</option>
                     <option value="In Lieferung" ${val==='In Lieferung'?'selected':''}>In Lieferung</option>
                     <option value="Im Lager" ${val==='Im Lager'?'selected':''}>Im Lager</option>
@@ -551,7 +563,7 @@ function renderBauteile() {
             dA.setHours(0,0,0,0);
             let diffDays = Math.ceil((dA - todayNoTime) / (1000 * 60 * 60 * 24));
             if (diffDays <= 7) isCrit = true;
-        } else if (['In Fertigung', 'In Lieferung'].includes(s)) {
+        } else if (['Bestellt', 'In Fertigung', 'In Lieferung'].includes(s)) {
             let dL = new Date(d.lieferdatum);
             dL.setHours(0,0,0,0);
             let diffDays = Math.ceil((dL - todayNoTime) / (1000 * 60 * 60 * 24));
@@ -712,6 +724,36 @@ function renderLieferanten() {
     });
 }
 
+// Helper to determine order date for a part
+function getOrderDate(part, dates) {
+    if (!part) return new Date();
+    let keys = Object.keys(part);
+    let explicitKey = keys.find(k => {
+        let lc = k.toLowerCase();
+        return lc.includes('bestelldatum') || lc.includes('bestellt am') || lc.includes('order date');
+    });
+    if (explicitKey && part[explicitKey]) {
+        let val = part[explicitKey];
+        if (typeof val === 'string' && val.includes('.')) {
+            let p = val.split('.');
+            if (p.length === 3) val = `${p[2]}-${p[1]}-${p[0]}`;
+        }
+        let d = new Date(val);
+        if (!isNaN(d.getTime())) return d;
+    }
+    let deadlineKey = keys.find(k => k.toLowerCase().includes('fixe deadline') || k.toLowerCase().includes('deadline'));
+    if (deadlineKey && part[deadlineKey]) {
+        let val = part[deadlineKey];
+        if (typeof val === 'string' && val.includes('.')) {
+            let p = val.split('.');
+            if (p.length === 3) val = `${p[2]}-${p[1]}-${p[0]}`;
+        }
+        let d = new Date(val);
+        if (!isNaN(d.getTime())) return d;
+    }
+    return dates ? dates.abschickdatum : new Date();
+}
+
 // Dashboard Logic
 function updateDashboard() {
     const totalParts = bauteileData.length;
@@ -726,14 +768,14 @@ function updateDashboard() {
     document.getElementById('progressDetails').innerText = `${erledigt} von ${totalParts} Bauteilen`;
 
     // 2. Status Breakdown
-    const allStatuses = ['Nicht begonnen', 'Designing', 'Fertigungszeichnung', 'Kontrolle', 'Zu bestellen', 'In Fertigung', 'In Lieferung', 'Im Lager', 'Assembled', 'Fertig montiert'];
+    const allStatuses = ['Nicht begonnen', 'Designing', 'Fertigungszeichnung', 'Kontrolle', 'Zu bestellen', 'Bestellt', 'In Fertigung', 'In Lieferung', 'Im Lager', 'Assembled', 'Fertig montiert'];
     let statHtml = '';
 
     allStatuses.forEach(s => {
         let count = bauteileData.filter(b => b["Status"] === s).length;
         let cClass = 'status-nicht'; 
         if (['Assembled', 'Fertig montiert'].includes(s)) cClass = 'status-erl'; 
-        else if (['In Fertigung', 'In Lieferung', 'Im Lager'].includes(s)) cClass = 'status-fert'; 
+        else if (['Bestellt', 'In Fertigung', 'In Lieferung', 'Im Lager'].includes(s)) cClass = 'status-fert'; 
 
         let escapedStatus = s.replace(/'/g, "\\'");
         statHtml += `
@@ -875,13 +917,27 @@ function updateDashboard() {
     });
 
     listWaiting.sort((a,b) => a.minPW - b.minPW).forEach(ug => {
-        let missingStr = ug.missingNames.join(', ');
+        let missingParts = ug.parts.filter(p => !['Im Lager', 'Assembled', 'Fertig montiert'].includes(p["Status"]));
+        let arrivedParts = ug.parts.filter(p => ['Im Lager', 'Assembled', 'Fertig montiert'].includes(p["Status"]));
         let pText = ug.minPW < 0 ? `<span style="color:var(--danger);font-weight:bold;">${ug.minPW} T</span>` : `<span style="color:var(--success);">${ug.minPW} T</span>`;
         let escapedName = ug.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+
+        let missingStr = missingParts.map(p => {
+            let pName = p["Bauteil-Name"] || 'Unbenannt';
+            let pStatus = p["Status"] || 'Nicht begonnen';
+            return `<span style="color:var(--danger); font-size:0.75rem;"><i class="fa-solid fa-circle-xmark"></i> ${pName} (${pStatus})</span>`;
+        }).join('<br>');
+
+        let arrivedStr = arrivedParts.length > 0 ? 
+            arrivedParts.map(p => `<span style="color:var(--success); font-size:0.75rem;"><i class="fa-solid fa-circle-check"></i> ${p["Bauteil-Name"] || 'Unbenannt'} (Im Lager)</span>`).join('<br>') : '';
+
         waitingHtml += `
             <tr>
                 <td><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${ug.name}</strong></a><br><span style="font-size:0.75rem;color:var(--text-muted);">${ug.baugruppe}</span></td>
-                <td style="color:var(--danger); font-size:0.8rem;">Fehlt: ${missingStr}</td>
+                <td>
+                    ${missingStr}
+                    ${arrivedStr ? `<div style="margin-top:3px; border-top:1px dashed rgba(255,255,255,0.08); padding-top:2px;">${arrivedStr}</div>` : ''}
+                </td>
                 <td><span>${daysLeftGlobal} T</span></td>
                 <td><span>${ug.maxW} T</span></td>
                 <td>${pText}</td>
@@ -910,6 +966,35 @@ function updateDashboard() {
                 <td><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${ug.name}</strong></a><br><span style="font-size:0.75rem;color:var(--text-muted);">${ug.baugruppe}</span></td>
                 <td><span>${daysLeftGlobal} T</span></td>
                 <td><span>${ug.maxM} T</span></td>
+                <td>${pText}</td>
+            </tr>
+        `;
+    });
+
+    // Add individual parts without Unterbaugruppe that are Im Lager / Assembled (Zur Montage ready)
+    let einzelPartsReady = [];
+    bauteileData.forEach(p => {
+        let ub = p["Unterbaugruppe"] || 'Keine';
+        if (ub === 'Keine' || ub.trim() === '') {
+            if (['Im Lager', 'Assembled'].includes(p["Status"])) {
+                let montage = parseInt(p["Montage Zeit"]) || 0;
+                let requiredTime = montage;
+                let puffer = daysLeftGlobal - requiredTime;
+                einzelPartsReady.push({ p, puffer, requiredTime });
+            }
+        }
+    });
+
+    einzelPartsReady.sort((a,b) => a.puffer - b.puffer).forEach(item => {
+        let p = item.p;
+        let pText = item.puffer < 0 ? `<span style="color:var(--danger);font-weight:bold;">${item.puffer} T</span>` : `<span style="color:var(--success);">${item.puffer} T</span>`;
+        let pName = p["Bauteil-Name"] || 'Unbenannt';
+        let escapedName = pName.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        readyHtml += `
+            <tr>
+                <td><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${pName}</strong></a><br><span style="font-size:0.75rem;color:var(--text-muted);">${p["Baugruppe"] || 'Sonstiges'} (Einzelteil)</span></td>
+                <td><span>${daysLeftGlobal} T</span></td>
+                <td><span>${item.requiredTime} T</span></td>
                 <td>${pText}</td>
             </tr>
         `;
@@ -993,7 +1078,7 @@ function updateDashboard() {
                     status: status
                 });
             }
-        } else if (['In Fertigung', 'In Lieferung'].includes(status)) {
+        } else if (['Bestellt', 'In Fertigung', 'In Lieferung'].includes(status)) {
             let dL_noTime = new Date(dL);
             dL_noTime.setHours(0,0,0,0);
             let diffDays = Math.ceil((dL_noTime - todayNoTime) / (1000 * 60 * 60 * 24));
@@ -1104,15 +1189,22 @@ function updateDashboard() {
     let eReady = document.getElementById('ntReady');
     if (eReady) eReady.innerText = nReady;
 
-    // 6. Zu bestellen Panel
+    // 6. Zu bestellen Panel (beinhaltet "Zu bestellen" und "Bestellt" bis "In Fertigung")
     let toOrderHtml = '';
     
-    let toOrderItems = bauteileData.filter(b => b["Status"] === "Zu bestellen").map(b => {
+    let toOrderItems = bauteileData.filter(b => b["Status"] === "Zu bestellen" || b["Status"] === "Bestellt").map(b => {
         let dates = calculateDates(b);
         let dA = dates.abschickdatum;
+        let dL = dates.lieferdatum;
+        let status = b["Status"];
         let diffDays = Math.ceil((dA - today) / (1000 * 60 * 60 * 24));
-        return { b, dA, diffDays };
-    }).sort((a, b) => a.diffDays - b.diffDays);
+        return { b, dA, dL, status, diffDays };
+    }).sort((a, b) => {
+        if (a.status !== b.status) {
+            return a.status === "Zu bestellen" ? -1 : 1;
+        }
+        return a.diffDays - b.diffDays;
+    });
 
     toOrderItems.forEach(item => {
         let b = item.b;
@@ -1121,14 +1213,30 @@ function updateDashboard() {
         let fertiger = b["Fertiger / Firma"] || "Kein Fertiger";
         let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
         let dA = item.dA;
+        let dL = item.dL;
+        let status = item.status;
         let diffDays = item.diffDays;
         let color = diffDays < 0 ? 'var(--danger)' : (diffDays <= 7 ? 'var(--warning)' : 'var(--success)');
+
+        let statusBadge = status === 'Bestellt' ? 
+            `<span style="margin-left:6px; background:rgba(245, 158, 11, 0.2); color:#f59e0b; border:1px solid rgba(245,158,11,0.4); padding:1px 6px; border-radius:4px; font-size:0.7rem; font-weight:700;"><i class="fa-solid fa-clock"></i> Bestellt</span>` :
+            `<span style="margin-left:6px; background:rgba(239, 68, 68, 0.2); color:#ef4444; border:1px solid rgba(239,68,68,0.4); padding:1px 6px; border-radius:4px; font-size:0.7rem; font-weight:700;"><i class="fa-solid fa-cart-arrow-down"></i> Zu bestellen</span>`;
         
+        let deadlineCell = status === 'Bestellt' ?
+            `<td style="color:var(--warning); font-weight:600; white-space:nowrap;" title="Lieferung ca.: ${dL.toLocaleDateString('de-DE')}">Lieferung: ${dL.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit'})}</td>` :
+            `<td style="color:${color}; font-weight:bold; white-space:nowrap;" title="Bestellen bis: ${dA.toLocaleDateString('de-DE')}">${dA.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} <span style="font-size:0.75rem;">(${diffDays} T)</span></td>`;
+
         toOrderHtml += `
             <tr>
                 <td><span style="background:var(--primary); padding:2px 6px; border-radius:4px; font-size:0.7rem; color:white;"><i class="fa-solid fa-cube"></i> ${cat}</span></td>
-                <td><a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${name}</strong></a><br><span style="font-size:0.75rem; color:var(--text-muted);">${fertiger}</span></td>
-                <td style="color:${color}; font-weight:bold; white-space:nowrap;" title="Verbleibende Tage: ${diffDays}">${dA.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} <span style="font-size:0.75rem;">(${diffDays} T)</span></td>
+                <td>
+                    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;">
+                        <a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${name}</strong></a>
+                        ${statusBadge}
+                    </div>
+                    <span style="font-size:0.75rem; color:var(--text-muted);">${fertiger}</span>
+                </td>
+                ${deadlineCell}
             </tr>
         `;
     });
@@ -1182,6 +1290,74 @@ function updateDashboard() {
             toOrderHtml = `<tr><td colspan="4" style="text-align:center; padding:15px; color:var(--text-muted);"><i class="fa-solid fa-check-circle" style="color:var(--success);"></i> Alles erledigt! Keine offenen Bestellungen.</td></tr>`;
         }
         toOrderBody.innerHTML = toOrderHtml;
+    }
+
+    // 7. In Bestellung Panel (ganz hinten unten)
+    let inOrderHtml = '';
+    let inOrderItems = bauteileData.filter(b => ['Bestellt', 'In Fertigung', 'In Lieferung'].includes(b["Status"])).map(b => {
+        let dates = calculateDates(b);
+        let dL = dates.lieferdatum;
+        let diffLiefer = Math.ceil((dL - today) / (1000 * 60 * 60 * 24));
+        let orderDate = getOrderDate(b, dates);
+        let daysAgo = Math.floor((todayNoTime - orderDate) / (1000 * 60 * 60 * 24));
+        return { b, dates, dL, diffLiefer, orderDate, daysAgo };
+    }).sort((a, b) => a.diffLiefer - b.diffLiefer);
+
+    inOrderItems.forEach(item => {
+        let b = item.b;
+        let name = b["Bauteil-Name"] || "Unbenannt";
+        let bg = b["Baugruppe"] || "";
+        let fertiger = b["Fertiger / Firma"] || "";
+        let escapedName = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        let status = b["Status"];
+        let daysAgo = item.daysAgo;
+        let dL = item.dL;
+        let diffLiefer = item.diffLiefer;
+
+        let statusBadge = '';
+        if (status === 'Bestellt') {
+            statusBadge = `<span style="background:rgba(245, 158, 11, 0.2); color:#f59e0b; border:1px solid rgba(245,158,11,0.4); padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:600; white-space:nowrap;"><i class="fa-solid fa-clock"></i> Bestellt</span>`;
+        } else if (status === 'In Fertigung') {
+            statusBadge = `<span style="background:rgba(59, 130, 246, 0.2); color:#60a5fa; border:1px solid rgba(59,130,246,0.4); padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:600; white-space:nowrap;"><i class="fa-solid fa-gears"></i> In Fertigung</span>`;
+        } else if (status === 'In Lieferung') {
+            statusBadge = `<span style="background:rgba(168, 85, 247, 0.2); color:#c084fc; border:1px solid rgba(168,85,247,0.4); padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:600; white-space:nowrap;"><i class="fa-solid fa-truck"></i> In Lieferung</span>`;
+        }
+
+        let orderedText = '';
+        if (daysAgo === 0) {
+            orderedText = `<span style="color:#60a5fa; font-weight:600;"><i class="fa-solid fa-clock"></i> heute</span>`;
+        } else if (daysAgo === 1) {
+            orderedText = `<span style="color:#60a5fa; font-weight:600;"><i class="fa-solid fa-clock"></i> vor 1 T</span>`;
+        } else if (daysAgo > 1) {
+            orderedText = `<span style="color:var(--text-main); font-weight:600;"><i class="fa-solid fa-clock"></i> vor ${daysAgo} T</span>`;
+        } else {
+            orderedText = `<span style="color:var(--text-muted); font-size:0.75rem;">geplant (${Math.abs(daysAgo)} T)</span>`;
+        }
+
+        let lieferColor = diffLiefer < 0 ? 'var(--danger)' : (diffLiefer <= 7 ? 'var(--warning)' : 'var(--text-main)');
+        let lieferText = diffLiefer < 0 ? 
+            `<span style="color:${lieferColor}; font-weight:bold;">${Math.abs(diffLiefer)} T Verzug</span>` : 
+            `<span style="color:${lieferColor};">in ${diffLiefer} T</span>`;
+
+        inOrderHtml += `
+            <tr>
+                <td>
+                    <a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${name}</strong></a>
+                    <br><span style="font-size:0.75rem; color:var(--text-muted);">${bg}${fertiger ? ' • ' + fertiger : ''}</span>
+                </td>
+                <td>${statusBadge}</td>
+                <td style="white-space:nowrap;" title="Bestellt am / geplant: ${item.orderDate ? item.orderDate.toLocaleDateString('de-DE') : '-'}">${orderedText}</td>
+                <td style="white-space:nowrap;" title="Lieferdatum: ${dL.toLocaleDateString('de-DE')}">${dL.toLocaleDateString('de-DE', {day:'2-digit', month:'2-digit'})} (${lieferText})</td>
+            </tr>
+        `;
+    });
+
+    let inOrderBody = document.getElementById('inOrderBody');
+    if (inOrderBody) {
+        if (inOrderHtml === '') {
+            inOrderHtml = `<tr><td colspan="4" style="text-align:center; padding:15px; color:var(--text-muted);"><i class="fa-solid fa-box-open" style="color:var(--primary);"></i> Keine Bauteile aktuell in Bestellung.</td></tr>`;
+        }
+        inOrderBody.innerHTML = inOrderHtml;
     }
 
     if (typeof updateGanttFilters === 'function') updateGanttFilters();
@@ -1900,7 +2076,7 @@ window.openStatusModal = function(status) {
                 dA.setHours(0,0,0,0);
                 let diff = Math.ceil((dA - todayNoTime) / (1000 * 60 * 60 * 24));
                 deadlineText = `<span style="color: ${diff < 0 ? 'var(--danger)' : (diff <= 7 ? 'var(--warning)' : 'var(--text-muted)')}; font-size: 0.75rem;">Bestellen bis: ${dates.abschickdatum.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} (${diff < 0 ? `${diff} T überfällig` : `in ${diff} T`})</span>`;
-            } else if (['In Fertigung', 'In Lieferung'].includes(status)) {
+            } else if (['Bestellt', 'In Fertigung', 'In Lieferung'].includes(status)) {
                 let dL = new Date(dates.lieferdatum);
                 dL.setHours(0,0,0,0);
                 let diff = Math.ceil((dL - todayNoTime) / (1000 * 60 * 60 * 24));
@@ -2542,14 +2718,14 @@ window.renderGanttSummary = function() {
         
         if (['Nicht begonnen', 'Designing', 'Fertigungszeichnung'].includes(status) && todayNoTime > dK) isBehind = true;
         else if (['Kontrolle', 'Zu bestellen'].includes(status) && todayNoTime > dA) isBehind = true;
-        else if (['In Fertigung', 'In Lieferung'].includes(status) && todayNoTime > dL) isBehind = true;
+        else if (['Bestellt', 'In Fertigung', 'In Lieferung'].includes(status) && todayNoTime > dL) isBehind = true;
         else if (['Im Lager', 'Assembled'].includes(status) && todayNoTime > target) isBehind = true;
 
         if (status === 'Fertig montiert') {
             trStyle = 'opacity: 0.4;';
         } else if (isBehind) {
             trStyle = 'background-color: rgba(239, 68, 68, 0.15);';
-        } else if (['In Fertigung', 'In Lieferung'].includes(status)) {
+        } else if (['Bestellt', 'In Fertigung', 'In Lieferung'].includes(status)) {
             trStyle = 'opacity: 0.6; background-color: rgba(59, 130, 246, 0.15);';
         }
 
@@ -2744,14 +2920,14 @@ window.renderGanttChart = function() {
             
             if (['Nicht begonnen', 'Designing', 'Fertigungszeichnung'].includes(status) && todayNoTime > dK) isBehind = true;
             else if (['Kontrolle', 'Zu bestellen'].includes(status) && todayNoTime > dA) isBehind = true;
-            else if (['In Fertigung', 'In Lieferung'].includes(status) && todayNoTime > dL) isBehind = true;
+            else if (['Bestellt', 'In Fertigung', 'In Lieferung'].includes(status) && todayNoTime > dL) isBehind = true;
             else if (['Im Lager', 'Assembled'].includes(status) && todayNoTime > tDatum) isBehind = true;
 
             if (status === 'Fertig montiert') {
                 trStyle = 'opacity: 0.4;';
             } else if (isBehind) {
                 trStyle = 'background-color: rgba(239, 68, 68, 0.15);';
-            } else if (['In Fertigung', 'In Lieferung'].includes(status)) {
+            } else if (['Bestellt', 'In Fertigung', 'In Lieferung'].includes(status)) {
                 trStyle = 'opacity: 0.6; background-color: rgba(59, 130, 246, 0.15);';
             }
 

@@ -332,13 +332,32 @@
                                   <thead>
                                       <tr>
                                           <th>Unterbaugruppe</th>
-                                          <th>Fehlende Teile</th>
+                                          <th>Teile-Status</th>
                                           <th>Restzeit</th>
                                           <th>Dauer</th>
                                           <th>Puffer</th>
                                       </tr>
                                   </thead>
                                   <tbody id="waitingPartsBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- In Bestellung (Bestellt / In Lieferung) -->
+                    <div class="widget" style="border-color: #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.1);">
+                        <h4 style="color: #60a5fa;"><i class="fa-solid fa-truck-fast"></i> In Bestellung (Bestellt / In Lieferung)</h4>
+                        <div class="table-container small-table">
+                            <table style="font-size: 0.85rem;">
+                                <thead>
+                                    <tr>
+                                        <th>Bauteil</th>
+                                        <th>Status</th>
+                                        <th>Bestellt vor</th>
+                                        <th>Lieferung</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inOrderBody">
                                 </tbody>
                             </table>
                         </div>
@@ -570,6 +589,6 @@
         <!-- Injected via JS -->
     </datalist>
 
-    <script src="script.js?v=4"></script>
+    <script src="script.js?v=5"></script>
 </body>
 </html>

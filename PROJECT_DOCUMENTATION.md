@@ -104,11 +104,12 @@ Ein Datensatz repräsentiert ein Bauteil. Standard-Spalten (`isStandardBCol`):
 3. `Fertigungszeichnung`
 4. `Kontrolle`
 5. `Zu bestellen`
-6. `In Fertigung`
-7. `In Lieferung`
-8. `Im Lager`
-9. `Assembled`
-10. `Fertig montiert`
+6. `Bestellt`
+7. `In Fertigung`
+8. `In Lieferung`
+9. `Im Lager`
+10. `Assembled`
+11. `Fertig montiert`
 
 ### 5.2 Tabelle: `normteile`
 Standard-Spalten (`isStandardNCol`):
@@ -185,10 +186,14 @@ Zwei Modi:
 ## 7. Wichtige UI-Features & Modale
 
 1. **Dashboard-Kacheln mit Direktsprung & Modalen:**
-   - **Status Übersicht:** Klick auf einen Status (z. B. *Designing*) öffnet `#statusModal`, gruppiert Bauteile nach Baugruppe, bietet Direktsprung zum Teil oder Tabellenfilterung (`#status:...`).
+   - **Status Übersicht:** Klick auf einen Status (z. B. *Designing*, *Bestellt*) öffnet `#statusModal`, gruppiert Bauteile nach Baugruppe, bietet Direktsprung zum Teil oder Tabellenfilterung (`#status:...`).
    - **Normteile Übersicht:** Klick auf *Muss bestellt werden*, *Bestellung unterwegs* oder *Auf Vorrat* öffnet `#normteileStatusModal`, gruppiert nach Kategorie, zeigt Fehlmengen und Verbauungen.
+   - **Zu Bestellen (Bauteile & Normteile):** Beinhaltet Bauteile mit Status *Zu bestellen* (rote Markierung) und *Bestellt* (gelbe Markierung) bis diese auf *In Fertigung* wechseln.
+   - **In Bestellung (Bestellt / In Lieferung):** 6. Widget im Dashboard ("ganz hinten unten"). Listet alle Bauteile in Beschaffung (*Bestellt*, *In Fertigung*, *In Lieferung*) mit aktuellem Status, Bestelldatum ("vor X Tagen") und Liefertermin. Sobald ein Teil *Im Lager* ist, verlässt es diese Liste.
+   - **Zur Montage ready:** Enthält fertig assemblierten Unterbaugruppen sowie Einzelteile ohne Unterbaugruppe, die bereits *Im Lager* / *Assembled* sind.
+   - **Unterbaugruppen Lager-Ampel:** Zeigt an, wie viele Teile einer Unterbaugruppe fehlen (rot) bzw. ob alle Teile im Lager sind (grün).
 2. **Such- & Filtersyntax:**
-   - Planung: Freitext oder `#status:Designing`, `#status:Zu bestellen`, `#kritisch`
+   - Planung: Freitext oder `#status:Designing`, `#status:Zu bestellen`, `#status:Bestellt`, `#kritisch`
    - Normteile: Freitext oder `#to_order`, `#ordered`, `#ready`, `#missing`
 3. **Gantt-Chart (`renderGanttChart`):**
    - Gruppiert nach Baugruppen mit Phasen: CAD (Lila), Kontrolle (Gelb), Fertigung (Blau), Assembly (Grün).
