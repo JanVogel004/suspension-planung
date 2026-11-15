@@ -1200,8 +1200,9 @@ function updateDashboard() {
         let diffDays = Math.ceil((dA - today) / (1000 * 60 * 60 * 24));
         return { b, dA, dL, status, diffDays };
     }).sort((a, b) => {
+        // "Bestellt" ganz oben anzeigen (wartet auf Bestätigung), danach "Zu bestellen" nach Dringlichkeit
         if (a.status !== b.status) {
-            return a.status === "Zu bestellen" ? -1 : 1;
+            return a.status === "Bestellt" ? -1 : 1;
         }
         return a.diffDays - b.diffDays;
     });
@@ -1223,7 +1224,7 @@ function updateDashboard() {
             `<span style="margin-left:6px; background:rgba(239, 68, 68, 0.2); color:#ef4444; border:1px solid rgba(239,68,68,0.4); padding:1px 6px; border-radius:4px; font-size:0.7rem; font-weight:700;"><i class="fa-solid fa-cart-arrow-down"></i> Zu bestellen</span>`;
         
         let deadlineCell = status === 'Bestellt' ?
-            `<td style="color:var(--text-muted); font-size:0.8rem; text-align:center;">-</td>` :
+            `<td style="white-space:nowrap;" title="Wartet auf Bestätigung / Fertigungsstart"><span style="color:var(--warning); font-size:0.75rem; font-weight:600;"><i class="fa-solid fa-hourglass-half"></i> Wartet auf Bestätigung</span></td>` :
             `<td style="color:${color}; font-weight:bold; white-space:nowrap;" title="Bestellen bis: ${dA.toLocaleDateString('de-DE')}">${dA.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} <span style="font-size:0.75rem;">(${diffDays} T)</span></td>`;
 
         toOrderHtml += `

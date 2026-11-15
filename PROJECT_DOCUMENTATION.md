@@ -188,7 +188,7 @@ Zwei Modi:
 1. **Dashboard-Kacheln mit Direktsprung & Modalen:**
    - **Status Übersicht:** Klick auf einen Status (z. B. *Designing*, *Bestellt*) öffnet `#statusModal`, gruppiert Bauteile nach Baugruppe, bietet Direktsprung zum Teil oder Tabellenfilterung (`#status:...`).
    - **Normteile Übersicht:** Klick auf *Muss bestellt werden*, *Bestellung unterwegs* oder *Auf Vorrat* öffnet `#normteileStatusModal`, gruppiert nach Kategorie, zeigt Fehlmengen und Verbauungen.
-   - **Zu Bestellen (Bauteile & Normteile):** Beinhaltet Bauteile mit Status *Zu bestellen* (rote Markierung mit Deadline) und *Bestellt* (gelbe Markierung). Teile verbleiben hier, bis sie aktiv auf *In Fertigung* (oder *In Lieferung*) gesetzt werden.
+   - **Zu Bestellen (Bauteile & Normteile):** Beinhaltet Bauteile mit Status *Bestellt* (ganz oben platziert mit Hinweis „Wartet auf Bestätigung“) und *Zu bestellen* (mit Bestell-Deadline). Teile verbleiben hier, bis sie aktiv auf *In Fertigung* (oder *In Lieferung*) gesetzt werden.
    - **In Fertigung (Fertigung & Lieferung):** 6. Widget im Dashboard ("ganz hinten unten"). Listet alle Bauteile auf, die sich in Produktion/Lieferung befinden (*In Fertigung*, *In Lieferung*), mit aktuellem Status-Badge, Bestelldatum ("vor X Tagen") und voraussichtlichem Liefertermin. Sobald ein Teil *Im Lager* ist, verlässt es diese Liste.
    - **Zur Montage ready:** Enthält fertig assemblierten Unterbaugruppen sowie Einzelteile ohne Unterbaugruppe, die bereits *Im Lager* / *Assembled* sind.
    - **Unterbaugruppen Lager-Ampel:** Zeigt an, wie viele Teile einer Unterbaugruppe fehlen (rot) bzw. ob alle Teile im Lager sind (grün).
