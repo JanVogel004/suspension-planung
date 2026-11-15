@@ -145,8 +145,8 @@ async function loadData() {
         if (!Array.isArray(lieferantenData)) throw new Error('Lieferanten: Ungültige Antwort');
         let lColsRaw = lieferantenData.length > 0 ? Object.keys(lieferantenData[0]).filter(k => k !== 'id') : ['Fertigungsverfahren', 'Firma (Fertiger)', 'Zusammenarbeit', 'Typ', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen'];
         supabaseLieferantenColumns = [...lColsRaw];
-        let lPref = ['Fertigungsverfahren', 'Firma (Fertiger)', 'Zusammenarbeit', 'Typ', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen'];
-        lieferantenColumns = [...new Set([...lPref.filter(c => lColsRaw.includes(c)), ...lColsRaw])];
+        let lPref = ['Fertigungsverfahren', 'Firma (Fertiger)', 'Bestätigt für Saison (Check)', 'Zusammenarbeit', 'Typ', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen'];
+        lieferantenColumns = [...new Set([...lPref.filter(c => lColsRaw.includes(c) || c === 'Bestätigt für Saison (Check)'), ...lColsRaw])];
         
         // Hydrate sponsor season confirmation state
         lieferantenData.forEach(r => {
@@ -187,6 +187,18 @@ async function loadData() {
         applySort('bauteile', bauteileColumns);
         applySort('lieferanten', lieferantenColumns);
         applySort('normteile', normteileColumns);
+        
+        // Ensure 'Bestätigt für Saison (Check)' is directly behind 'Firma (Fertiger)'
+        let fIdx = lieferantenColumns.indexOf('Firma (Fertiger)');
+        let cIdx = lieferantenColumns.indexOf('Bestätigt für Saison (Check)');
+        if (cIdx === -1) {
+            if (fIdx !== -1) lieferantenColumns.splice(fIdx + 1, 0, 'Bestätigt für Saison (Check)');
+            else lieferantenColumns.push('Bestätigt für Saison (Check)');
+        } else if (fIdx !== -1 && cIdx !== fIdx + 1) {
+            lieferantenColumns.splice(cIdx, 1);
+            fIdx = lieferantenColumns.indexOf('Firma (Fertiger)');
+            lieferantenColumns.splice(fIdx + 1, 0, 'Bestätigt für Saison (Check)');
+        }
         
         if(!bauteileColumns.includes('Unterbaugruppe')) {
             let index = bauteileColumns.indexOf('Baugruppe');
@@ -645,11 +657,16 @@ function renderLieferanten() {
     lieferantenColumns.forEach(col => {
         if (col === 'Typ') return;
         let sStyle = col === 'Teile / Komponenten (ct8)' ? ' style="min-width: 250px;"' : '';
+        if (col === 'Bestätigt für Saison (Check)') sStyle = ' style="width: 150px; text-align: center;"';
         let isFirst = col === 'Fertigungsverfahren';
+        let colTitle = displayCol(col);
+        if (col === 'Bestätigt für Saison (Check)') {
+            colTitle = `<span title="Bestätigt für die Saison (angefragt!)"><i class="fa-solid fa-circle-check" style="color:#4ade80; margin-right:4px;"></i>Bestätigt (Saison)</span>`;
+        }
         headHtml += `<th${sStyle}>
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 ${!isFirst ? `<button style="background:none;border:none;color:inherit;cursor:pointer;opacity:0.4;padding:0 4px;" onclick="moveCol('lieferanten', '${col}', -1)"><i class="fa-solid fa-caret-left"></i></button>` : '<span></span>'}
-                <span style="flex-grow:1; text-align:center;">${displayCol(col)}</span>
+                <span style="flex-grow:1; text-align:center;">${colTitle}</span>
                 <div style="white-space:nowrap;">
                     ${!isFirst ? `<button style="background:none;border:none;color:inherit;cursor:pointer;opacity:0.4;padding:0 4px;" onclick="moveCol('lieferanten', '${col}', 1)"><i class="fa-solid fa-caret-right"></i></button>` : ''}
                     ${!isStandardLCol(col) ? `<button class="delete-btn" style="padding:2px; font-size:10px; margin-left:4px;" onclick="delLieferantColumn('${col}')"><i class="fa-solid fa-xmark"></i></button>` : ''}
@@ -743,29 +760,22 @@ function renderLieferanten() {
                 let typ = row['Typ'] || '';
                 let typOpts = ['Sponsoren', 'Zulieferer', 'Mögliche Sponsoren', ''].map(t => `<option value="${t}" ${typ === t ? 'selected' : ''}>${t === '' ? '📋 Sonstige' : (t === 'Sponsoren' ? '⭐ Sponsoren' : (t === 'Zulieferer' ? '🔧 Zulieferer' : '💡 Mögliche Sponsoren'))}</option>`).join('');
                 
-                let checkboxLine = '';
-                if (typ === 'Sponsoren' || typ === 'Mögliche Sponsoren' || isConfirmed) {
-                    checkboxLine = `
-                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.75rem; margin-top:4px; padding:3px 8px; border-radius:5px; cursor:pointer; user-select:none; background:${isConfirmed ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.04)'}; border:1px solid ${isConfirmed ? 'rgba(34, 197, 94, 0.4)' : 'rgba(255, 255, 255, 0.08)'}; transition:all 0.15s ease;" title="Bestätigt für die Saison (angefragt)">
-                            <input type="checkbox" ${isConfirmed ? 'checked' : ''} onchange="updateSponsorConfirmed(${index}, this.checked);" style="width:14px; height:14px; accent-color:#16a34a; cursor:pointer; margin:0;">
-                            <span style="font-weight:${isConfirmed ? '600' : '400'}; color:${isConfirmed ? '#4ade80' : 'var(--text-muted)'};">
-                                ${isConfirmed ? '✔ Bestätigt für Saison (angefragt)' : 'Bestätigt für die Saison (also angefragt!)'}
-                            </span>
-                        </label>
-                    `;
-                }
-                
                 html += `<td>
                     <div style="display:flex; flex-direction:column; gap:4px;">
                         <input type="text" value="${val}" onchange="updateL(${index}, '${col}', this.value); renderBauteile(); renderLieferanten();" style="font-weight:bold; ${isConfirmed ? 'color:#4ade80;' : ''}">
                         <select style="font-size:0.7rem; padding:3px; border-radius:4px; border:1px solid var(--border); background:var(--bg-dark); color:var(--text-muted); cursor:pointer;" onchange="updateL(${index}, 'Typ', this.value); renderLieferanten();" title="Kategorie ändern">
                             ${typOpts}
                         </select>
-                        ${checkboxLine}
                     </div>
                 </td>`;
             } else if (col === 'Bestätigt für Saison (Check)') {
-                html += `<td style="text-align:center;"><input type="checkbox" ${isConfirmed ? 'checked' : ''} onchange="updateSponsorConfirmed(${index}, this.checked);" style="width:20px; height:20px; cursor:pointer;"></td>`;
+                let checkTitle = isConfirmed ? 'Bestätigt für die Saison (angefragt!)' : 'Noch offen / Nicht bestätigt';
+                html += `<td style="text-align:center;">
+                    <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                        <input type="checkbox" ${isConfirmed ? 'checked' : ''} onchange="updateSponsorConfirmed(${index}, this.checked);" style="width:20px; height:20px; accent-color:#16a34a; cursor:pointer;" title="${checkTitle}">
+                        ${isConfirmed ? '<span style="font-size:0.75rem; color:#4ade80; font-weight:600;"><i class="fa-solid fa-check"></i></span>' : ''}
+                    </div>
+                </td>`;
             } else if (col.toLowerCase().includes('(check)')) {
                 let isChecked = val === 'true' || val === true || val === 'Ja' || val === '1';
                 html += `<td style="text-align:center;"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="updateL(${index}, '${col}', this.checked ? 'true' : 'false'); renderLieferanten();" style="width:20px; height:20px; cursor:pointer;"></td>`;
