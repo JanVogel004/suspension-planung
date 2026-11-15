@@ -1223,7 +1223,7 @@ function updateDashboard() {
             `<span style="margin-left:6px; background:rgba(239, 68, 68, 0.2); color:#ef4444; border:1px solid rgba(239,68,68,0.4); padding:1px 6px; border-radius:4px; font-size:0.7rem; font-weight:700;"><i class="fa-solid fa-cart-arrow-down"></i> Zu bestellen</span>`;
         
         let deadlineCell = status === 'Bestellt' ?
-            `<td style="color:var(--warning); font-weight:600; white-space:nowrap;" title="Lieferung ca.: ${dL.toLocaleDateString('de-DE')}">Lieferung: ${dL.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit'})}</td>` :
+            `<td style="color:var(--text-muted); font-size:0.8rem; text-align:center;">-</td>` :
             `<td style="color:${color}; font-weight:bold; white-space:nowrap;" title="Bestellen bis: ${dA.toLocaleDateString('de-DE')}">${dA.toLocaleDateString('de-DE', {day: '2-digit', month: '2-digit', year: 'numeric'})} <span style="font-size:0.75rem;">(${diffDays} T)</span></td>`;
 
         toOrderHtml += `
@@ -1292,9 +1292,9 @@ function updateDashboard() {
         toOrderBody.innerHTML = toOrderHtml;
     }
 
-    // 7. In Bestellung Panel (ganz hinten unten)
-    let inOrderHtml = '';
-    let inOrderItems = bauteileData.filter(b => ['Bestellt', 'In Fertigung', 'In Lieferung'].includes(b["Status"])).map(b => {
+    // 7. In Fertigung Panel (ganz hinten unten)
+    let inFertigungHtml = '';
+    let inFertigungItems = bauteileData.filter(b => ['In Fertigung', 'In Lieferung'].includes(b["Status"])).map(b => {
         let dates = calculateDates(b);
         let dL = dates.lieferdatum;
         let diffLiefer = Math.ceil((dL - today) / (1000 * 60 * 60 * 24));
@@ -1303,7 +1303,7 @@ function updateDashboard() {
         return { b, dates, dL, diffLiefer, orderDate, daysAgo };
     }).sort((a, b) => a.diffLiefer - b.diffLiefer);
 
-    inOrderItems.forEach(item => {
+    inFertigungItems.forEach(item => {
         let b = item.b;
         let name = b["Bauteil-Name"] || "Unbenannt";
         let bg = b["Baugruppe"] || "";
@@ -1315,9 +1315,7 @@ function updateDashboard() {
         let diffLiefer = item.diffLiefer;
 
         let statusBadge = '';
-        if (status === 'Bestellt') {
-            statusBadge = `<span style="background:rgba(245, 158, 11, 0.2); color:#f59e0b; border:1px solid rgba(245,158,11,0.4); padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:600; white-space:nowrap;"><i class="fa-solid fa-clock"></i> Bestellt</span>`;
-        } else if (status === 'In Fertigung') {
+        if (status === 'In Fertigung') {
             statusBadge = `<span style="background:rgba(59, 130, 246, 0.2); color:#60a5fa; border:1px solid rgba(59,130,246,0.4); padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:600; white-space:nowrap;"><i class="fa-solid fa-gears"></i> In Fertigung</span>`;
         } else if (status === 'In Lieferung') {
             statusBadge = `<span style="background:rgba(168, 85, 247, 0.2); color:#c084fc; border:1px solid rgba(168,85,247,0.4); padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:600; white-space:nowrap;"><i class="fa-solid fa-truck"></i> In Lieferung</span>`;
@@ -1339,7 +1337,7 @@ function updateDashboard() {
             `<span style="color:${lieferColor}; font-weight:bold;">${Math.abs(diffLiefer)} T Verzug</span>` : 
             `<span style="color:${lieferColor};">in ${diffLiefer} T</span>`;
 
-        inOrderHtml += `
+        inFertigungHtml += `
             <tr>
                 <td>
                     <a href="javascript:void(0)" onclick="jumpToBauteil('${escapedName}')" style="color:inherit; text-decoration:none; display:inline-block; border-bottom: 1px dashed currentcolor;"><strong>${name}</strong></a>
@@ -1352,12 +1350,12 @@ function updateDashboard() {
         `;
     });
 
-    let inOrderBody = document.getElementById('inOrderBody');
-    if (inOrderBody) {
-        if (inOrderHtml === '') {
-            inOrderHtml = `<tr><td colspan="4" style="text-align:center; padding:15px; color:var(--text-muted);"><i class="fa-solid fa-box-open" style="color:var(--primary);"></i> Keine Bauteile aktuell in Bestellung.</td></tr>`;
+    let inFertigungBody = document.getElementById('inFertigungBody') || document.getElementById('inOrderBody');
+    if (inFertigungBody) {
+        if (inFertigungHtml === '') {
+            inFertigungHtml = `<tr><td colspan="4" style="text-align:center; padding:15px; color:var(--text-muted);"><i class="fa-solid fa-gears" style="color:var(--primary);"></i> Keine Bauteile aktuell in Fertigung / Lieferung.</td></tr>`;
         }
-        inOrderBody.innerHTML = inOrderHtml;
+        inFertigungBody.innerHTML = inFertigungHtml;
     }
 
     if (typeof updateGanttFilters === 'function') updateGanttFilters();
