@@ -127,9 +127,9 @@ Standard-Spalten (`isStandardNCol`):
 Standard-Spalten (`isStandardLCol`):
 - `Fertigungsverfahren` (z. B. 5-Achs-Fräsen, Drehen, Laserschneiden)
 - `Firma (Fertiger)`
+- `Status Saison` (4-Stufen-Status direkt hinter der Firma: `⚪ Offen`, `⏳ Angefragt`, `✅ Bestätigt`, `❌ Abgesagt`; mit Farbcodierung, Quick-Filter-Pills `Alle | Bestätigt | Angefragt | Abgesagt | Offen`, Zähler-Badge im Sponsoren-Header `[✔ X Bestätigt | ⏳ Y Angefragt | ❌ Z Abgesagt]` und abwärtskompatibler Synchronisation)
 - `Zusammenarbeit` (Ampel: `""`, `Zufrieden`, `Können mehr machen`, `Wollen weniger machen`)
 - `Typ` (`Sponsoren`, `Zulieferer`, `Mögliche Sponsoren`, `Sonstige`)
-- `Bestätigt für Saison (Check)` (`true` / `false` / Checkbox: "Bestätigt für die Saison (angefragt!)", mit Quick-Filter `Alle | Bestätigt | Angefragt / Offen` und Zähler-Badge im Header)
 - `Teile / Komponenten (ct8)`
 - `Email`
 - `Webseite`

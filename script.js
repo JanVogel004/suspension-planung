@@ -145,26 +145,54 @@ async function loadData() {
         if (!Array.isArray(lieferantenData)) throw new Error('Lieferanten: Ungültige Antwort');
         let lColsRaw = lieferantenData.length > 0 ? Object.keys(lieferantenData[0]).filter(k => k !== 'id') : ['Fertigungsverfahren', 'Firma (Fertiger)', 'Zusammenarbeit', 'Typ', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen'];
         supabaseLieferantenColumns = [...lColsRaw];
-        let lPref = ['Fertigungsverfahren', 'Firma (Fertiger)', 'Bestätigt für Saison (Check)', 'Zusammenarbeit', 'Typ', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen'];
-        lieferantenColumns = [...new Set([...lPref.filter(c => lColsRaw.includes(c) || c === 'Bestätigt für Saison (Check)'), ...lColsRaw])];
         
-        // Hydrate sponsor season confirmation state
+        // Find existing column name in Supabase or use 'Status Saison'
+        let saisonColName = lColsRaw.find(c => c === 'Status Saison' || c === 'Saison Status' || c === 'Bestätigt für Saison' || c === 'Bestätigt für Saison (Check)') || 'Status Saison';
+        
+        let lPref = ['Fertigungsverfahren', 'Firma (Fertiger)', saisonColName, 'Zusammenarbeit', 'Typ', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen'];
+        lieferantenColumns = [...new Set([...lPref.filter(c => lColsRaw.includes(c) || c === saisonColName), ...lColsRaw])];
+        
+        // Hydrate sponsor season status (Offen, Angefragt, Bestätigt, Abgesagt)
         lieferantenData.forEach(r => {
             let notes = r['Notizen'] || '';
-            let isConf = false;
-            if (r['Bestätigt für Saison (Check)'] !== undefined && r['Bestätigt für Saison (Check)'] !== '') {
-                isConf = r['Bestätigt für Saison (Check)'] === 'true' || r['Bestätigt für Saison (Check)'] === true;
+            let s = '';
+            
+            // 1. Direct column checks
+            if (r['Status Saison'] !== undefined && r['Status Saison'] !== '') {
+                s = r['Status Saison'];
+            } else if (r['Saison Status'] !== undefined && r['Saison Status'] !== '') {
+                s = r['Saison Status'];
             } else if (r['Bestätigt für Saison'] !== undefined && r['Bestätigt für Saison'] !== '') {
-                isConf = r['Bestätigt für Saison'] === 'true' || r['Bestätigt für Saison'] === true;
-            } else if (notes.includes('<!--saison:confirmed-->') || notes.includes('[Saison: Bestätigt]')) {
-                isConf = true;
+                s = r['Bestätigt für Saison'];
+            } else if (r['Bestätigt für Saison (Check)'] !== undefined && r['Bestätigt für Saison (Check)'] !== '') {
+                let v = r['Bestätigt für Saison (Check)'];
+                if (v === 'true' || v === true) s = 'Bestätigt';
+                else if (v === 'false' || v === false) s = '';
+                else s = v;
             } else {
-                let f = r['Firma (Fertiger)'] || '';
-                if (f && localStorage.getItem('spon_conf_' + f) === 'true') {
-                    isConf = true;
+                // 2. Check notes metadata
+                let match = notes.match(/<!--saison:(.*?)-->/);
+                if (match && match[1]) {
+                    s = match[1];
+                    if (s === 'confirmed') s = 'Bestätigt';
+                } else if (notes.includes('[Saison: Bestätigt]')) {
+                    s = 'Bestätigt';
+                } else {
+                    let f = r['Firma (Fertiger)'] || '';
+                    if (f) {
+                        let savedStatus = localStorage.getItem('spon_status_' + f);
+                        if (savedStatus) s = savedStatus;
+                        else if (localStorage.getItem('spon_conf_' + f) === 'true') s = 'Bestätigt';
+                    }
                 }
             }
-            r['Bestätigt für Saison (Check)'] = isConf ? 'true' : 'false';
+            
+            // Normalize values
+            if (s === 'true') s = 'Bestätigt';
+            if (s === 'false') s = '';
+            r['Status Saison'] = s;
+            r['Bestätigt für Saison (Check)'] = s === 'Bestätigt' ? 'true' : 'false';
+            r[saisonColName] = s;
         });
         
         const nRes = await fetch(`${SUPABASE_URL}/normteile?select=*`, { headers: getAuthHeaders(), cache: 'no-store' });
@@ -188,16 +216,21 @@ async function loadData() {
         applySort('lieferanten', lieferantenColumns);
         applySort('normteile', normteileColumns);
         
-        // Ensure 'Bestätigt für Saison (Check)' is directly behind 'Firma (Fertiger)'
+        // Ensure Status Saison (or saisonColName) is directly behind 'Firma (Fertiger)'
         let fIdx = lieferantenColumns.indexOf('Firma (Fertiger)');
-        let cIdx = lieferantenColumns.indexOf('Bestätigt für Saison (Check)');
+        let cIdx = lieferantenColumns.indexOf(saisonColName);
         if (cIdx === -1) {
-            if (fIdx !== -1) lieferantenColumns.splice(fIdx + 1, 0, 'Bestätigt für Saison (Check)');
-            else lieferantenColumns.push('Bestätigt für Saison (Check)');
+            cIdx = lieferantenColumns.indexOf('Status Saison');
+            if (cIdx === -1) cIdx = lieferantenColumns.indexOf('Bestätigt für Saison (Check)');
+        }
+        if (cIdx === -1) {
+            if (fIdx !== -1) lieferantenColumns.splice(fIdx + 1, 0, saisonColName);
+            else lieferantenColumns.push(saisonColName);
         } else if (fIdx !== -1 && cIdx !== fIdx + 1) {
+            let colToMove = lieferantenColumns[cIdx];
             lieferantenColumns.splice(cIdx, 1);
             fIdx = lieferantenColumns.indexOf('Firma (Fertiger)');
-            lieferantenColumns.splice(fIdx + 1, 0, 'Bestätigt für Saison (Check)');
+            lieferantenColumns.splice(fIdx + 1, 0, colToMove);
         }
         
         if(!bauteileColumns.includes('Unterbaugruppe')) {
@@ -268,15 +301,20 @@ async function saveData() {
                 o[c] = r[c] === undefined ? '' : r[c];
             });
             
-            let isConf = r['Bestätigt für Saison (Check)'] === 'true' || r['Bestätigt für Saison (Check)'] === true;
+            let status = r['Status Saison'] || '';
+            let isConf = status === 'Bestätigt' || r['Bestätigt für Saison (Check)'] === 'true' || r['Bestätigt für Saison (Check)'] === true;
             
-            if (knownCols.includes('Bestätigt für Saison (Check)')) {
-                o['Bestätigt für Saison (Check)'] = isConf ? 'true' : 'false';
+            if (knownCols.includes('Status Saison')) {
+                o['Status Saison'] = status;
+            } else if (knownCols.includes('Saison Status')) {
+                o['Saison Status'] = status;
             } else if (knownCols.includes('Bestätigt für Saison')) {
-                o['Bestätigt für Saison'] = isConf ? 'true' : 'false';
+                o['Bestätigt für Saison'] = status;
+            } else if (knownCols.includes('Bestätigt für Saison (Check)')) {
+                o['Bestätigt für Saison (Check)'] = isConf ? 'true' : (status ? status : 'false');
             } else {
-                let rawNotes = (o['Notizen'] || '').replace(/<!--saison:confirmed-->/g, '').replace(/\[Saison: Bestätigt\]/g, '').trim();
-                o['Notizen'] = isConf ? (rawNotes ? rawNotes + ' <!--saison:confirmed-->' : '<!--saison:confirmed-->') : rawNotes;
+                let rawNotes = (o['Notizen'] || '').replace(/<!--saison:(.*?)-->/g, '').replace(/\[Saison: (.*?)\]/g, '').trim();
+                o['Notizen'] = status ? (rawNotes ? rawNotes + ` <!--saison:${status}-->` : `<!--saison:${status}-->`) : rawNotes;
             }
             return o;
         });
@@ -645,7 +683,7 @@ function renderBauteile() {
 }
 
 function isStandardLCol(col) {
-    return ['Fertigungsverfahren', 'Firma (Fertiger)', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen', 'Zusammenarbeit', 'Typ', 'Bestätigt für Saison (Check)'].includes(col);
+    return ['Fertigungsverfahren', 'Firma (Fertiger)', 'Teile / Komponenten (ct8)', 'Email', 'Webseite', 'Notizen', 'Kontakt & Notizen', 'Zusammenarbeit', 'Typ', 'Status Saison', 'Saison Status', 'Bestätigt für Saison', 'Bestätigt für Saison (Check)'].includes(col);
 }
 
 function renderLieferanten() {
@@ -656,12 +694,12 @@ function renderLieferanten() {
     let headHtml = '<tr>';
     lieferantenColumns.forEach(col => {
         if (col === 'Typ') return;
-        let sStyle = col === 'Teile / Komponenten (ct8)' ? ' style="min-width: 250px;"' : '';
-        if (col === 'Bestätigt für Saison (Check)') sStyle = ' style="width: 150px; text-align: center;"';
+        let isSaisonCol = col === 'Status Saison' || col === 'Saison Status' || col === 'Bestätigt für Saison' || col === 'Bestätigt für Saison (Check)';
+        let sStyle = col === 'Teile / Komponenten (ct8)' ? ' style="min-width: 250px;"' : (isSaisonCol ? ' style="min-width: 155px; text-align: center;"' : '');
         let isFirst = col === 'Fertigungsverfahren';
         let colTitle = displayCol(col);
-        if (col === 'Bestätigt für Saison (Check)') {
-            colTitle = `<span title="Bestätigt für die Saison (angefragt!)"><i class="fa-solid fa-circle-check" style="color:#4ade80; margin-right:4px;"></i>Bestätigt (Saison)</span>`;
+        if (isSaisonCol) {
+            colTitle = `<span title="Status für aktuelle Saison (Offen, Angefragt, Bestätigt, Abgesagt)"><i class="fa-solid fa-flag" style="color:#6366f1; margin-right:4px;"></i>Status Saison</span>`;
         }
         headHtml += `<th${sStyle}>
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -709,7 +747,8 @@ function renderLieferanten() {
     let currentTyp = '__NONE__';
     sorted.forEach(({row, index}) => {
         let typ = row['Typ'] || '';
-        let isConfirmed = row['Bestätigt für Saison (Check)'] === 'true' || row['Bestätigt für Saison (Check)'] === true;
+        let currentSaison = row['Status Saison'] || '';
+        let isConfirmed = currentSaison === 'Bestätigt' || row['Bestätigt für Saison (Check)'] === 'true' || row['Bestätigt für Saison (Check)'] === true;
         
         if (typ !== currentTyp) {
             currentTyp = typ;
@@ -723,13 +762,23 @@ function renderLieferanten() {
             let extraBadge = '';
             if (typ === 'Sponsoren') {
                 let sponList = lieferantenData.filter(l => (l['Typ'] || '') === 'Sponsoren');
-                let confCount = sponList.filter(l => l['Bestätigt für Saison (Check)'] === 'true' || l['Bestätigt für Saison (Check)'] === true).length;
-                extraBadge = `<span style="font-size:0.75rem; font-weight:600; background:rgba(34, 197, 94, 0.2); color:#4ade80; border:1px solid rgba(34, 197, 94, 0.4); padding:2px 10px; border-radius:12px; margin-left:12px;"><i class="fa-solid fa-circle-check"></i> ${confCount}/${sponList.length} für Saison bestätigt</span>`;
+                let confCount = sponList.filter(l => (l['Status Saison'] || '') === 'Bestätigt').length;
+                let angCount = sponList.filter(l => (l['Status Saison'] || '') === 'Angefragt').length;
+                let abgCount = sponList.filter(l => (l['Status Saison'] || '') === 'Abgesagt').length;
+                extraBadge = `<span style="font-size:0.75rem; font-weight:600; display:inline-flex; gap:6px; margin-left:12px; align-items:center;">
+                    <span style="background:rgba(34, 197, 94, 0.2); color:#4ade80; border:1px solid rgba(34, 197, 94, 0.4); padding:2px 8px; border-radius:12px;" title="Bestätigt für Saison"><i class="fa-solid fa-circle-check"></i> ${confCount} Bestätigt</span>
+                    ${angCount > 0 ? `<span style="background:rgba(245, 158, 11, 0.2); color:#fbbf24; border:1px solid rgba(245, 158, 11, 0.4); padding:2px 8px; border-radius:12px;" title="Angefragt für Saison"><i class="fa-solid fa-clock"></i> ${angCount} Angefragt</span>` : ''}
+                    ${abgCount > 0 ? `<span style="background:rgba(239, 68, 68, 0.2); color:#f87171; border:1px solid rgba(239, 68, 68, 0.4); padding:2px 8px; border-radius:12px;" title="Abgesagt"><i class="fa-solid fa-circle-xmark"></i> ${abgCount} Abgesagt</span>` : ''}
+                </span>`;
             } else if (typ === 'Mögliche Sponsoren') {
                 let mList = lieferantenData.filter(l => (l['Typ'] || '') === 'Mögliche Sponsoren');
-                let confCount = mList.filter(l => l['Bestätigt für Saison (Check)'] === 'true' || l['Bestätigt für Saison (Check)'] === true).length;
-                if (confCount > 0) {
-                    extraBadge = `<span style="font-size:0.75rem; font-weight:600; background:rgba(34, 197, 94, 0.2); color:#4ade80; border:1px solid rgba(34, 197, 94, 0.4); padding:2px 10px; border-radius:12px; margin-left:12px;"><i class="fa-solid fa-circle-check"></i> ${confCount} zugesagt</span>`;
+                let confCount = mList.filter(l => (l['Status Saison'] || '') === 'Bestätigt').length;
+                let angCount = mList.filter(l => (l['Status Saison'] || '') === 'Angefragt').length;
+                if (confCount > 0 || angCount > 0) {
+                    extraBadge = `<span style="font-size:0.75rem; font-weight:600; display:inline-flex; gap:6px; margin-left:12px; align-items:center;">
+                        ${confCount > 0 ? `<span style="background:rgba(34, 197, 94, 0.2); color:#4ade80; border:1px solid rgba(34, 197, 94, 0.4); padding:2px 8px; border-radius:12px;"><i class="fa-solid fa-circle-check"></i> ${confCount} Zugesagt</span>` : ''}
+                        ${angCount > 0 ? `<span style="background:rgba(245, 158, 11, 0.2); color:#fbbf24; border:1px solid rgba(245, 158, 11, 0.4); padding:2px 8px; border-radius:12px;"><i class="fa-solid fa-clock"></i> ${angCount} Angefragt</span>` : ''}
+                    </span>`;
                 }
             }
             
@@ -737,6 +786,7 @@ function renderLieferanten() {
             tbody.appendChild(headerTr);
         }
         const tr = document.createElement('tr');
+        tr.setAttribute('data-sponsor-status', currentSaison || 'Offen');
         tr.setAttribute('data-sponsor-confirmed', isConfirmed ? 'true' : 'false');
         tr.setAttribute('data-typ', typ);
         
@@ -760,21 +810,41 @@ function renderLieferanten() {
                 let typ = row['Typ'] || '';
                 let typOpts = ['Sponsoren', 'Zulieferer', 'Mögliche Sponsoren', ''].map(t => `<option value="${t}" ${typ === t ? 'selected' : ''}>${t === '' ? '📋 Sonstige' : (t === 'Sponsoren' ? '⭐ Sponsoren' : (t === 'Zulieferer' ? '🔧 Zulieferer' : '💡 Mögliche Sponsoren'))}</option>`).join('');
                 
+                let nameStyle = 'font-weight:bold;';
+                if (currentSaison === 'Bestätigt') nameStyle += ' color:#4ade80;';
+                else if (currentSaison === 'Angefragt') nameStyle += ' color:#fbbf24;';
+                else if (currentSaison === 'Abgesagt') nameStyle += ' color:#f87171; text-decoration:line-through; opacity:0.75;';
+                
                 html += `<td>
                     <div style="display:flex; flex-direction:column; gap:4px;">
-                        <input type="text" value="${val}" onchange="updateL(${index}, '${col}', this.value); renderBauteile(); renderLieferanten();" style="font-weight:bold; ${isConfirmed ? 'color:#4ade80;' : ''}">
+                        <input type="text" value="${val}" onchange="updateL(${index}, '${col}', this.value); renderBauteile(); renderLieferanten();" style="${nameStyle}">
                         <select style="font-size:0.7rem; padding:3px; border-radius:4px; border:1px solid var(--border); background:var(--bg-dark); color:var(--text-muted); cursor:pointer;" onchange="updateL(${index}, 'Typ', this.value); renderLieferanten();" title="Kategorie ändern">
                             ${typOpts}
                         </select>
                     </div>
                 </td>`;
-            } else if (col === 'Bestätigt für Saison (Check)') {
-                let checkTitle = isConfirmed ? 'Bestätigt für die Saison (angefragt!)' : 'Noch offen / Nicht bestätigt';
-                html += `<td style="text-align:center;">
-                    <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px;">
-                        <input type="checkbox" ${isConfirmed ? 'checked' : ''} onchange="updateSponsorConfirmed(${index}, this.checked);" style="width:20px; height:20px; accent-color:#16a34a; cursor:pointer;" title="${checkTitle}">
-                        ${isConfirmed ? '<span style="font-size:0.75rem; color:#4ade80; font-weight:600;"><i class="fa-solid fa-check"></i></span>' : ''}
-                    </div>
+            } else if (col === 'Status Saison' || col === 'Saison Status' || col === 'Bestätigt für Saison' || col === 'Bestätigt für Saison (Check)') {
+                const sOptions = ['', 'Angefragt', 'Bestätigt', 'Abgesagt'];
+                const sFarben = {
+                    '': '#64748b',
+                    'Offen': '#64748b',
+                    'Angefragt': '#f59e0b',
+                    'Bestätigt': '#16a34a',
+                    'Abgesagt': '#dc2626'
+                };
+                const sIcons = {
+                    '': '⚪ Offen',
+                    'Offen': '⚪ Offen',
+                    'Angefragt': '⏳ Angefragt',
+                    'Bestätigt': '✅ Bestätigt',
+                    'Abgesagt': '❌ Abgesagt'
+                };
+                let sFarbe = sFarben[currentSaison] || sFarben[''];
+                let sOpts = sOptions.map(o => `<option value="${o}" ${currentSaison === o ? 'selected' : ''}>${sIcons[o] || o}</option>`).join('');
+                html += `<td style="text-align:center; min-width:145px;">
+                    <select style="background:${sFarbe}22; color:${sFarbe}; border:1.5px solid ${sFarbe}; border-radius:6px; padding:4px 8px; font-weight:600; cursor:pointer;" onchange="updateSaisonStatus(${index}, this.value)">
+                        ${sOpts}
+                    </select>
                 </td>`;
             } else if (col.toLowerCase().includes('(check)')) {
                 let isChecked = val === 'true' || val === true || val === 'Ja' || val === '1';
@@ -795,7 +865,7 @@ function renderLieferanten() {
                     let r = col === 'Teile / Komponenten (ct8)' ? '2' : '1';
                     let displayVal = val;
                     if (col === 'Notizen') {
-                        displayVal = (val || '').replace(/<!--saison:confirmed-->/g, '').replace(/\[Saison: Bestätigt\]/g, '').trim();
+                        displayVal = (val || '').replace(/<!--saison:(.*?)-->/g, '').replace(/\[Saison: (.*?)\]/g, '').trim();
                     }
                     html += `<td><textarea rows="${r}" style="white-space: pre-wrap;" onchange="updateL(${index}, '${col}', this.value)" ondblclick="openTextModal('lieferanten', ${index}, '${col}')">${displayVal}</textarea></td>`;
                 } else {
@@ -825,25 +895,38 @@ function renderLieferanten() {
     }
 }
 
-window.updateSponsorConfirmed = function(index, isChecked) {
+window.updateSaisonStatus = function(index, newStatus) {
     pushHistory();
-    let val = isChecked ? 'true' : 'false';
     if (!lieferantenData[index]) return;
-    lieferantenData[index]['Bestätigt für Saison (Check)'] = val;
+    lieferantenData[index]['Status Saison'] = newStatus;
+    lieferantenData[index]['Bestätigt für Saison (Check)'] = newStatus === 'Bestätigt' ? 'true' : 'false';
+    
     let firma = lieferantenData[index]['Firma (Fertiger)'] || '';
     if (firma) {
-        localStorage.setItem('spon_conf_' + firma, val);
+        localStorage.setItem('spon_status_' + firma, newStatus);
+        localStorage.setItem('spon_conf_' + firma, newStatus === 'Bestätigt' ? 'true' : 'false');
     }
     
-    // Keep Notizen in sync if column not yet in Supabase
-    if (!supabaseLieferantenColumns.includes('Bestätigt für Saison (Check)') && !supabaseLieferantenColumns.includes('Bestätigt für Saison')) {
+    // Check if Supabase column exists
+    let hasCol = supabaseLieferantenColumns && (
+        supabaseLieferantenColumns.includes('Status Saison') || 
+        supabaseLieferantenColumns.includes('Saison Status') || 
+        supabaseLieferantenColumns.includes('Bestätigt für Saison') ||
+        supabaseLieferantenColumns.includes('Bestätigt für Saison (Check)')
+    );
+    
+    if (!hasCol) {
         let notes = lieferantenData[index]['Notizen'] || '';
-        let clean = notes.replace(/<!--saison:confirmed-->/g, '').replace(/\[Saison: Bestätigt\]/g, '').trim();
-        lieferantenData[index]['Notizen'] = isChecked ? (clean ? clean + ' <!--saison:confirmed-->' : '<!--saison:confirmed-->') : clean;
+        let clean = notes.replace(/<!--saison:(.*?)-->/g, '').replace(/\[Saison: (.*?)\]/g, '').trim();
+        lieferantenData[index]['Notizen'] = newStatus ? (clean ? clean + ` <!--saison:${newStatus}-->` : `<!--saison:${newStatus}-->`) : clean;
     }
     
     markDirty();
     renderLieferanten();
+};
+
+window.updateSponsorConfirmed = function(index, isChecked) {
+    updateSaisonStatus(index, isChecked ? 'Bestätigt' : '');
 };
 
 // Helper to determine order date for a part
@@ -1504,9 +1587,9 @@ function updateL(index, key, value) {
     pushHistory();
     if (!lieferantenData[index]) return;
     if (key === 'Notizen') {
-        let isConf = lieferantenData[index]['Bestätigt für Saison (Check)'] === 'true' || lieferantenData[index]['Bestätigt für Saison (Check)'] === true;
-        let cleanVal = value.replace(/<!--saison:confirmed-->/g, '').replace(/\[Saison: Bestätigt\]/g, '').trim();
-        lieferantenData[index][key] = isConf ? (cleanVal ? cleanVal + ' <!--saison:confirmed-->' : '<!--saison:confirmed-->') : cleanVal;
+        let currentStatus = lieferantenData[index]['Status Saison'] || (lieferantenData[index]['Bestätigt für Saison (Check)'] === 'true' ? 'Bestätigt' : '');
+        let cleanVal = value.replace(/<!--saison:(.*?)-->/g, '').replace(/\[Saison: (.*?)\]/g, '').trim();
+        lieferantenData[index][key] = currentStatus ? (cleanVal ? cleanVal + ` <!--saison:${currentStatus}-->` : `<!--saison:${currentStatus}-->`) : cleanVal;
     } else {
         lieferantenData[index][key] = value;
     }
@@ -1573,7 +1656,7 @@ window.openAddLieferantModal = function() {
     document.getElementById('newLieferantNameInput').value = '';
     document.getElementById('newLieferantEmailInput').value = '';
     document.getElementById('newLieferantWebInput').value = '';
-    if (document.getElementById('newLieferantBestaetigtInput')) document.getElementById('newLieferantBestaetigtInput').checked = false;
+    if (document.getElementById('newLieferantStatusInput')) document.getElementById('newLieferantStatusInput').value = '';
     if (document.getElementById('newLieferantTypInput')) document.getElementById('newLieferantTypInput').value = 'Sponsoren';
     updateVerfahrenSuggestions();
 };
@@ -1591,7 +1674,7 @@ window.saveAddLieferantModal = function() {
         let email = document.getElementById('newLieferantEmailInput').value.trim();
         let web = document.getElementById('newLieferantWebInput').value.trim();
         let typ = document.getElementById('newLieferantTypInput') ? document.getElementById('newLieferantTypInput').value : '';
-        let isConf = document.getElementById('newLieferantBestaetigtInput') ? (document.getElementById('newLieferantBestaetigtInput').checked ? 'true' : 'false') : 'false';
+        let statusSaison = document.getElementById('newLieferantStatusInput') ? document.getElementById('newLieferantStatusInput').value : '';
         
         if (!name) { alert("Bitte einen Firmennamen eingeben!"); return; }
         
@@ -1603,10 +1686,12 @@ window.saveAddLieferantModal = function() {
         newRow["Typ"] = typ;
         newRow["Email"] = email;
         newRow["Webseite"] = web;
-        newRow["Bestätigt für Saison (Check)"] = isConf;
+        newRow["Status Saison"] = statusSaison;
+        newRow["Bestätigt für Saison (Check)"] = statusSaison === 'Bestätigt' ? 'true' : 'false';
         
-        if (isConf === 'true') {
-            localStorage.setItem('spon_conf_' + name, 'true');
+        if (statusSaison) {
+            localStorage.setItem('spon_status_' + name, statusSaison);
+            localStorage.setItem('spon_conf_' + name, statusSaison === 'Bestätigt' ? 'true' : 'false');
         }
         
         lieferantenData.push(newRow);
@@ -2555,16 +2640,13 @@ window.filterNormteile = function() {
 window.setSponsorFilter = function(filter) {
     currentSponsorFilter = filter;
     document.querySelectorAll('.filter-pills .pill-btn').forEach(btn => btn.classList.remove('active'));
-    if (filter === 'all') {
-        let b = document.getElementById('filterSponAll');
-        if (b) b.classList.add('active');
-    } else if (filter === 'confirmed') {
-        let b = document.getElementById('filterSponConf');
-        if (b) b.classList.add('active');
-    } else if (filter === 'open') {
-        let b = document.getElementById('filterSponOpen');
-        if (b) b.classList.add('active');
-    }
+    let b = null;
+    if (filter === 'all') b = document.getElementById('filterSponAll');
+    else if (filter === 'Bestätigt' || filter === 'confirmed') b = document.getElementById('filterSponConf');
+    else if (filter === 'Angefragt') b = document.getElementById('filterSponAng');
+    else if (filter === 'Abgesagt') b = document.getElementById('filterSponAbg');
+    else if (filter === 'Offen' || filter === 'open') b = document.getElementById('filterSponOffen');
+    if (b) b.classList.add('active');
     filterLieferanten();
 };
 
@@ -2587,15 +2669,21 @@ window.filterLieferanten = function() {
             currentGroupHeader = tr;
             anyVisibleInGroup = false;
         } else {
-            let isConfirmed = tr.getAttribute('data-sponsor-confirmed') === 'true';
+            let rowStatus = tr.getAttribute('data-sponsor-status') || '';
             let rowTyp = tr.getAttribute('data-typ') || '';
             
             // Check sponsor status filter
             let passesFilter = true;
-            if (currentSponsorFilter === 'confirmed') {
-                passesFilter = isConfirmed;
-            } else if (currentSponsorFilter === 'open') {
-                passesFilter = (rowTyp === 'Sponsoren' || rowTyp === 'Mögliche Sponsoren') && !isConfirmed;
+            if (currentSponsorFilter === 'all') {
+                passesFilter = true;
+            } else if (currentSponsorFilter === 'Bestätigt' || currentSponsorFilter === 'confirmed') {
+                passesFilter = rowStatus === 'Bestätigt';
+            } else if (currentSponsorFilter === 'Angefragt') {
+                passesFilter = rowStatus === 'Angefragt';
+            } else if (currentSponsorFilter === 'Abgesagt') {
+                passesFilter = rowStatus === 'Abgesagt';
+            } else if (currentSponsorFilter === 'Offen' || currentSponsorFilter === 'open') {
+                passesFilter = (rowStatus === '' || rowStatus === 'Offen');
             }
             
             if (!passesFilter) {
@@ -2710,7 +2798,7 @@ function openTextModal(type, index, col) {
     else if (type === 'lieferanten') {
         val = lieferantenData[index][col] || '';
         if (col === 'Notizen') {
-            val = (val || '').replace(/<!--saison:confirmed-->/g, '').replace(/\[Saison: Bestätigt\]/g, '').trim();
+            val = (val || '').replace(/<!--saison:(.*?)-->/g, '').replace(/\[Saison: (.*?)\]/g, '').trim();
         }
     }
     else if (type === 'normteile') val = normteileData[index][col] || '';
