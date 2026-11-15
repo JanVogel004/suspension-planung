@@ -54,6 +54,17 @@ let currentSponsorFilter = 'all';
 let normteileData = [];
 let normteileColumns = [];
 
+// Helper to reliably normalize sponsor season status
+function normalizeSaisonStatus(val) {
+    if (val === undefined || val === null) return 'Offen';
+    let s = String(val).trim().toLowerCase();
+    if (!s || s === 'offen' || s === 'open' || s === 'false') return 'Offen';
+    if (s === 'bestätigt' || s === 'bestaetigt' || s === 'true' || s === 'confirmed') return 'Bestätigt';
+    if (s === 'angefragt') return 'Angefragt';
+    if (s === 'abgesagt') return 'Abgesagt';
+    return 'Offen';
+}
+
 // Load target date from local storage or default
 let savedDate = localStorage.getItem('suspension_target_date') || '2026-12-01';
 let targetDate = new Date(savedDate);
@@ -158,23 +169,21 @@ async function loadData() {
             let s = '';
             
             // 1. Direct column checks
-            if (r['Status Saison'] !== undefined && r['Status Saison'] !== '') {
+            if (r['Status Saison'] !== undefined && r['Status Saison'] !== null && r['Status Saison'] !== '') {
                 s = r['Status Saison'];
-            } else if (r['Saison Status'] !== undefined && r['Saison Status'] !== '') {
+            } else if (r['Saison Status'] !== undefined && r['Saison Status'] !== null && r['Saison Status'] !== '') {
                 s = r['Saison Status'];
-            } else if (r['Bestätigt für Saison'] !== undefined && r['Bestätigt für Saison'] !== '') {
+            } else if (r['Bestätigt für Saison'] !== undefined && r['Bestätigt für Saison'] !== null && r['Bestätigt für Saison'] !== '') {
                 s = r['Bestätigt für Saison'];
-            } else if (r['Bestätigt für Saison (Check)'] !== undefined && r['Bestätigt für Saison (Check)'] !== '') {
+            } else if (r['Bestätigt für Saison (Check)'] !== undefined && r['Bestätigt für Saison (Check)'] !== null && r['Bestätigt für Saison (Check)'] !== '') {
                 let v = r['Bestätigt für Saison (Check)'];
                 if (v === 'true' || v === true) s = 'Bestätigt';
-                else if (v === 'false' || v === false) s = '';
-                else s = v;
+                else s = 'Offen';
             } else {
                 // 2. Check notes metadata
                 let match = notes.match(/<!--saison:(.*?)-->/);
                 if (match && match[1]) {
                     s = match[1];
-                    if (s === 'confirmed') s = 'Bestätigt';
                 } else if (notes.includes('[Saison: Bestätigt]')) {
                     s = 'Bestätigt';
                 } else {
@@ -187,12 +196,10 @@ async function loadData() {
                 }
             }
             
-            // Normalize values
-            if (s === 'true') s = 'Bestätigt';
-            if (s === 'false') s = '';
-            r['Status Saison'] = s;
-            r['Bestätigt für Saison (Check)'] = s === 'Bestätigt' ? 'true' : 'false';
-            r[saisonColName] = s;
+            let finalStatus = normalizeSaisonStatus(s);
+            r['Status Saison'] = finalStatus;
+            r['Bestätigt für Saison (Check)'] = finalStatus === 'Bestätigt' ? 'true' : 'false';
+            r[saisonColName] = finalStatus;
         });
         
         const nRes = await fetch(`${SUPABASE_URL}/normteile?select=*`, { headers: getAuthHeaders(), cache: 'no-store' });
@@ -301,8 +308,8 @@ async function saveData() {
                 o[c] = r[c] === undefined ? '' : r[c];
             });
             
-            let status = r['Status Saison'] || '';
-            let isConf = status === 'Bestätigt' || r['Bestätigt für Saison (Check)'] === 'true' || r['Bestätigt für Saison (Check)'] === true;
+            let status = normalizeSaisonStatus(r['Status Saison']);
+            let isConf = status === 'Bestätigt';
             
             if (knownCols.includes('Status Saison')) {
                 o['Status Saison'] = status;
@@ -311,10 +318,10 @@ async function saveData() {
             } else if (knownCols.includes('Bestätigt für Saison')) {
                 o['Bestätigt für Saison'] = status;
             } else if (knownCols.includes('Bestätigt für Saison (Check)')) {
-                o['Bestätigt für Saison (Check)'] = isConf ? 'true' : (status ? status : 'false');
+                o['Bestätigt für Saison (Check)'] = isConf ? 'true' : (status !== 'Offen' ? status : 'false');
             } else {
                 let rawNotes = (o['Notizen'] || '').replace(/<!--saison:(.*?)-->/g, '').replace(/\[Saison: (.*?)\]/g, '').trim();
-                o['Notizen'] = status ? (rawNotes ? rawNotes + ` <!--saison:${status}-->` : `<!--saison:${status}-->`) : rawNotes;
+                o['Notizen'] = status !== 'Offen' ? (rawNotes ? rawNotes + ` <!--saison:${status}-->` : `<!--saison:${status}-->`) : rawNotes;
             }
             return o;
         });
@@ -762,22 +769,27 @@ function renderLieferanten() {
             let extraBadge = '';
             if (typ === 'Sponsoren') {
                 let sponList = lieferantenData.filter(l => (l['Typ'] || '') === 'Sponsoren');
-                let confCount = sponList.filter(l => (l['Status Saison'] || '') === 'Bestätigt').length;
-                let angCount = sponList.filter(l => (l['Status Saison'] || '') === 'Angefragt').length;
-                let abgCount = sponList.filter(l => (l['Status Saison'] || '') === 'Abgesagt').length;
+                let confCount = sponList.filter(l => normalizeSaisonStatus(l['Status Saison']) === 'Bestätigt').length;
+                let angCount = sponList.filter(l => normalizeSaisonStatus(l['Status Saison']) === 'Angefragt').length;
+                let abgCount = sponList.filter(l => normalizeSaisonStatus(l['Status Saison']) === 'Abgesagt').length;
+                let offenCount = sponList.filter(l => normalizeSaisonStatus(l['Status Saison']) === 'Offen').length;
                 extraBadge = `<span style="font-size:0.75rem; font-weight:600; display:inline-flex; gap:6px; margin-left:12px; align-items:center;">
                     <span style="background:rgba(34, 197, 94, 0.2); color:#4ade80; border:1px solid rgba(34, 197, 94, 0.4); padding:2px 8px; border-radius:12px;" title="Bestätigt für Saison"><i class="fa-solid fa-circle-check"></i> ${confCount} Bestätigt</span>
                     ${angCount > 0 ? `<span style="background:rgba(245, 158, 11, 0.2); color:#fbbf24; border:1px solid rgba(245, 158, 11, 0.4); padding:2px 8px; border-radius:12px;" title="Angefragt für Saison"><i class="fa-solid fa-clock"></i> ${angCount} Angefragt</span>` : ''}
                     ${abgCount > 0 ? `<span style="background:rgba(239, 68, 68, 0.2); color:#f87171; border:1px solid rgba(239, 68, 68, 0.4); padding:2px 8px; border-radius:12px;" title="Abgesagt"><i class="fa-solid fa-circle-xmark"></i> ${abgCount} Abgesagt</span>` : ''}
+                    ${offenCount > 0 ? `<span style="background:rgba(100, 116, 139, 0.2); color:#94a3b8; border:1px solid rgba(100, 116, 139, 0.4); padding:2px 8px; border-radius:12px;" title="Offen"><i class="fa-regular fa-circle"></i> ${offenCount} Offen</span>` : ''}
                 </span>`;
             } else if (typ === 'Mögliche Sponsoren') {
                 let mList = lieferantenData.filter(l => (l['Typ'] || '') === 'Mögliche Sponsoren');
-                let confCount = mList.filter(l => (l['Status Saison'] || '') === 'Bestätigt').length;
-                let angCount = mList.filter(l => (l['Status Saison'] || '') === 'Angefragt').length;
-                if (confCount > 0 || angCount > 0) {
+                let confCount = mList.filter(l => normalizeSaisonStatus(l['Status Saison']) === 'Bestätigt').length;
+                let angCount = mList.filter(l => normalizeSaisonStatus(l['Status Saison']) === 'Angefragt').length;
+                let abgCount = mList.filter(l => normalizeSaisonStatus(l['Status Saison']) === 'Abgesagt').length;
+                let offenCount = mList.filter(l => normalizeSaisonStatus(l['Status Saison']) === 'Offen').length;
+                if (confCount > 0 || angCount > 0 || abgCount > 0) {
                     extraBadge = `<span style="font-size:0.75rem; font-weight:600; display:inline-flex; gap:6px; margin-left:12px; align-items:center;">
-                        ${confCount > 0 ? `<span style="background:rgba(34, 197, 94, 0.2); color:#4ade80; border:1px solid rgba(34, 197, 94, 0.4); padding:2px 8px; border-radius:12px;"><i class="fa-solid fa-circle-check"></i> ${confCount} Zugesagt</span>` : ''}
+                        ${confCount > 0 ? `<span style="background:rgba(34, 197, 94, 0.2); color:#4ade80; border:1px solid rgba(34, 197, 94, 0.4); padding:2px 8px; border-radius:12px;"><i class="fa-solid fa-circle-check"></i> ${confCount} Bestätigt</span>` : ''}
                         ${angCount > 0 ? `<span style="background:rgba(245, 158, 11, 0.2); color:#fbbf24; border:1px solid rgba(245, 158, 11, 0.4); padding:2px 8px; border-radius:12px;"><i class="fa-solid fa-clock"></i> ${angCount} Angefragt</span>` : ''}
+                        ${abgCount > 0 ? `<span style="background:rgba(239, 68, 68, 0.2); color:#f87171; border:1px solid rgba(239, 68, 68, 0.4); padding:2px 8px; border-radius:12px;"><i class="fa-solid fa-circle-xmark"></i> ${abgCount} Abgesagt</span>` : ''}
                     </span>`;
                 }
             }
@@ -786,7 +798,7 @@ function renderLieferanten() {
             tbody.appendChild(headerTr);
         }
         const tr = document.createElement('tr');
-        tr.setAttribute('data-sponsor-status', currentSaison || 'Offen');
+        tr.setAttribute('data-sponsor-status', currentSaison);
         tr.setAttribute('data-sponsor-confirmed', isConfirmed ? 'true' : 'false');
         tr.setAttribute('data-typ', typ);
         
@@ -824,22 +836,20 @@ function renderLieferanten() {
                     </div>
                 </td>`;
             } else if (col === 'Status Saison' || col === 'Saison Status' || col === 'Bestätigt für Saison' || col === 'Bestätigt für Saison (Check)') {
-                const sOptions = ['', 'Angefragt', 'Bestätigt', 'Abgesagt'];
+                const sOptions = ['Offen', 'Angefragt', 'Bestätigt', 'Abgesagt'];
                 const sFarben = {
-                    '': '#64748b',
                     'Offen': '#64748b',
                     'Angefragt': '#f59e0b',
                     'Bestätigt': '#16a34a',
                     'Abgesagt': '#dc2626'
                 };
                 const sIcons = {
-                    '': '⚪ Offen',
                     'Offen': '⚪ Offen',
                     'Angefragt': '⏳ Angefragt',
                     'Bestätigt': '✅ Bestätigt',
                     'Abgesagt': '❌ Abgesagt'
                 };
-                let sFarbe = sFarben[currentSaison] || sFarben[''];
+                let sFarbe = sFarben[currentSaison] || sFarben['Offen'];
                 let sOpts = sOptions.map(o => `<option value="${o}" ${currentSaison === o ? 'selected' : ''}>${sIcons[o] || o}</option>`).join('');
                 html += `<td style="text-align:center; min-width:145px;">
                     <select style="background:${sFarbe}22; color:${sFarbe}; border:1.5px solid ${sFarbe}; border-radius:6px; padding:4px 8px; font-weight:600; cursor:pointer;" onchange="updateSaisonStatus(${index}, this.value)">
@@ -898,6 +908,7 @@ function renderLieferanten() {
 window.updateSaisonStatus = function(index, newStatus) {
     pushHistory();
     if (!lieferantenData[index]) return;
+    newStatus = normalizeSaisonStatus(newStatus);
     lieferantenData[index]['Status Saison'] = newStatus;
     lieferantenData[index]['Bestätigt für Saison (Check)'] = newStatus === 'Bestätigt' ? 'true' : 'false';
     
@@ -918,7 +929,7 @@ window.updateSaisonStatus = function(index, newStatus) {
     if (!hasCol) {
         let notes = lieferantenData[index]['Notizen'] || '';
         let clean = notes.replace(/<!--saison:(.*?)-->/g, '').replace(/\[Saison: (.*?)\]/g, '').trim();
-        lieferantenData[index]['Notizen'] = newStatus ? (clean ? clean + ` <!--saison:${newStatus}-->` : `<!--saison:${newStatus}-->`) : clean;
+        lieferantenData[index]['Notizen'] = newStatus !== 'Offen' ? (clean ? clean + ` <!--saison:${newStatus}-->` : `<!--saison:${newStatus}-->`) : clean;
     }
     
     markDirty();
@@ -1656,7 +1667,7 @@ window.openAddLieferantModal = function() {
     document.getElementById('newLieferantNameInput').value = '';
     document.getElementById('newLieferantEmailInput').value = '';
     document.getElementById('newLieferantWebInput').value = '';
-    if (document.getElementById('newLieferantStatusInput')) document.getElementById('newLieferantStatusInput').value = '';
+    if (document.getElementById('newLieferantStatusInput')) document.getElementById('newLieferantStatusInput').value = 'Offen';
     if (document.getElementById('newLieferantTypInput')) document.getElementById('newLieferantTypInput').value = 'Sponsoren';
     updateVerfahrenSuggestions();
 };
@@ -1674,7 +1685,7 @@ window.saveAddLieferantModal = function() {
         let email = document.getElementById('newLieferantEmailInput').value.trim();
         let web = document.getElementById('newLieferantWebInput').value.trim();
         let typ = document.getElementById('newLieferantTypInput') ? document.getElementById('newLieferantTypInput').value : '';
-        let statusSaison = document.getElementById('newLieferantStatusInput') ? document.getElementById('newLieferantStatusInput').value : '';
+        let statusSaison = normalizeSaisonStatus(document.getElementById('newLieferantStatusInput') ? document.getElementById('newLieferantStatusInput').value : 'Offen');
         
         if (!name) { alert("Bitte einen Firmennamen eingeben!"); return; }
         
@@ -2664,26 +2675,27 @@ window.filterLieferanten = function() {
         let tr = trs[i];
         if (tr.classList.contains('group-header')) {
             if (currentGroupHeader) {
-                currentGroupHeader.style.display = ((filter === '' && currentSponsorFilter === 'all') || anyVisibleInGroup) ? "" : "none";
+                currentGroupHeader.style.display = ((filter === '' && (currentSponsorFilter === 'all' || !currentSponsorFilter)) || anyVisibleInGroup) ? "" : "none";
             }
             currentGroupHeader = tr;
             anyVisibleInGroup = false;
         } else {
-            let rowStatus = tr.getAttribute('data-sponsor-status') || '';
-            let rowTyp = tr.getAttribute('data-typ') || '';
+            let rawStatus = tr.getAttribute('data-sponsor-status');
+            let rowStatus = normalizeSaisonStatus(rawStatus);
+            let activeFilter = currentSponsorFilter || 'all';
             
             // Check sponsor status filter
             let passesFilter = true;
-            if (currentSponsorFilter === 'all') {
+            if (activeFilter === 'all') {
                 passesFilter = true;
-            } else if (currentSponsorFilter === 'Bestätigt' || currentSponsorFilter === 'confirmed') {
+            } else if (activeFilter === 'Bestätigt' || activeFilter === 'confirmed') {
                 passesFilter = rowStatus === 'Bestätigt';
-            } else if (currentSponsorFilter === 'Angefragt') {
+            } else if (activeFilter === 'Angefragt') {
                 passesFilter = rowStatus === 'Angefragt';
-            } else if (currentSponsorFilter === 'Abgesagt') {
+            } else if (activeFilter === 'Abgesagt') {
                 passesFilter = rowStatus === 'Abgesagt';
-            } else if (currentSponsorFilter === 'Offen' || currentSponsorFilter === 'open') {
-                passesFilter = (rowStatus === '' || rowStatus === 'Offen');
+            } else if (activeFilter === 'Offen' || activeFilter === 'open') {
+                passesFilter = rowStatus === 'Offen';
             }
             
             if (!passesFilter) {
@@ -2694,11 +2706,19 @@ window.filterLieferanten = function() {
             let inputs = tr.getElementsByTagName("input");
             let selects = tr.getElementsByTagName("select");
             let textareas = tr.getElementsByTagName("textarea");
-            let text = tr.textContent.toLowerCase() + " ";
+            let calculatedCells = tr.getElementsByClassName("calculated-list");
+            let text = "";
             
-            for (let j=0; j<inputs.length; j++) text += inputs[j].value.toLowerCase() + " ";
-            for (let j=0; j<selects.length; j++) text += selects[j].value.toLowerCase() + " ";
-            for (let j=0; j<textareas.length; j++) text += textareas[j].value.toLowerCase() + " ";
+            for (let j=0; j<inputs.length; j++) text += (inputs[j].value || '').toLowerCase() + " ";
+            for (let j=0; j<textareas.length; j++) text += (textareas[j].value || '').toLowerCase() + " ";
+            for (let j=0; j<selects.length; j++) {
+                let sel = selects[j];
+                text += (sel.value || '').toLowerCase() + " ";
+                if (sel.selectedIndex >= 0 && sel.options[sel.selectedIndex]) {
+                    text += (sel.options[sel.selectedIndex].text || '').toLowerCase() + " ";
+                }
+            }
+            for (let j=0; j<calculatedCells.length; j++) text += (calculatedCells[j].textContent || '').toLowerCase() + " ";
             
             if (filter === '' || text.indexOf(filter) > -1) {
                 tr.style.display = "";
@@ -2709,7 +2729,7 @@ window.filterLieferanten = function() {
         }
     }
     if (currentGroupHeader) {
-        currentGroupHeader.style.display = ((filter === '' && currentSponsorFilter === 'all') || anyVisibleInGroup) ? "" : "none";
+        currentGroupHeader.style.display = ((filter === '' && (currentSponsorFilter === 'all' || !currentSponsorFilter)) || anyVisibleInGroup) ? "" : "none";
     }
 };
 window.filterBauteile = function() {
